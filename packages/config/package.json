@@ -1,0 +1,13 @@
+{
+  "name": "@glowroot/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "tailwind-preset.js",
+    "tsconfig.base.json"
+  ],
+  "exports": {
+    "./tailwind-preset": "./tailwind-preset.js",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  }
+}

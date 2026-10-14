@@ -1,0 +1,58 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# next.js
+.next
+out
+next-env.d.ts
+
+# turborepo
+.turbo
+
+# production
+build
+dist
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+
+# debug
+npm-debug.log*
+pnpm-debug.log*
+
+# env
+.env
+.env*.local
+
+# file-backed mock stores (shared by both apps at runtime)
+.glowroot-orders.json
+.glowroot-users.json
+.glowroot-sessions.json
+.glowroot-shops.json
+.glowroot-shops.json.*.tmp
+
+.glowroot-catalogue.json
+.glowroot-catalogue.json.*.tmp
+
+uploads/product-images/
+
+# remaining local runtime stores
+.glowroot-partners.json
+.glowroot-zones.json
+.glowroot-*.json.*.tmp
+
+# generated artifacts and machine-local state
+/artifacts/
+/output/
+/tmp/
+.claude/settings.local.json
+.image-slots.state.json
+.thumbnail
+
+# environment files (keep shareable examples)
+.env.*
+!.env.example
+!.env.*.example

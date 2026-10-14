@@ -1,0 +1,1523 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GlowRoot — How a Request Works, and Why It's Built This Way</title>
+    <style>
+      /* ---------- reset ---------- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+      }
+      h1,
+      h2,
+      h3,
+      h4,
+      p,
+      ol,
+      ul,
+      figure,
+      pre {
+        margin: 0;
+      }
+      ol,
+      ul {
+        padding: 0;
+      }
+      img,
+      svg {
+        max-width: 100%;
+        display: block;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+
+      /* Third in the set — same tokens as architecture.html and component-architecture.html. */
+      :root {
+        --paper: #f6f7f3;
+        --surface: #ffffff;
+        --surface-2: #edefe8;
+        --ink: #171b18;
+        --ink-2: #3d4540;
+        --muted: #6e7872;
+        --line: #d8dcd2;
+        --line-2: #bfc5b9;
+
+        --client: #3f6070; /* slate — happens in the browser */
+        --app: #94285a; /* beet — happens on the server */
+        --pkg: #3b6644; /* leaf — the data layer */
+        --store: #8a5c0b; /* carrot — disk */
+        --warn: #a03818;
+
+        --display:
+          "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua",
+          ui-serif, Georgia, serif;
+        --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --mono:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #101311;
+          --surface: #181c19;
+          --surface-2: #212622;
+          --ink: #edf0ea;
+          --ink-2: #c4cbc2;
+          --muted: #8d968c;
+          --line: #2c322d;
+          --line-2: #3d453e;
+
+          --client: #8fb4c6;
+          --app: #e58bb0;
+          --pkg: #8fc79c;
+          --store: #d9ac5a;
+          --warn: #e89372;
+        }
+      }
+
+      :root[data-theme="light"] {
+        --paper: #f6f7f3;
+        --surface: #ffffff;
+        --surface-2: #edefe8;
+        --ink: #171b18;
+        --ink-2: #3d4540;
+        --muted: #6e7872;
+        --line: #d8dcd2;
+        --line-2: #bfc5b9;
+        --client: #3f6070;
+        --app: #94285a;
+        --pkg: #3b6644;
+        --store: #8a5c0b;
+        --warn: #a03818;
+      }
+
+      :root[data-theme="dark"] {
+        --paper: #101311;
+        --surface: #181c19;
+        --surface-2: #212622;
+        --ink: #edf0ea;
+        --ink-2: #c4cbc2;
+        --muted: #8d968c;
+        --line: #2c322d;
+        --line-2: #3d453e;
+        --client: #8fb4c6;
+        --app: #e58bb0;
+        --pkg: #8fc79c;
+        --store: #d9ac5a;
+        --warn: #e89372;
+      }
+
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--body);
+        font-size: 1rem;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page {
+        max-width: 74rem;
+        margin: 0 auto;
+        padding: clamp(1.75rem, 4vw, 4rem) clamp(1.1rem, 4vw, 3rem) 5rem;
+        display: flex;
+        flex-direction: column;
+        gap: clamp(2.75rem, 5vw, 4.5rem);
+      }
+
+      /* ---------- type ---------- */
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        font-weight: 600;
+        text-wrap: balance;
+        line-height: 1.15;
+      }
+      h1 {
+        font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+        letter-spacing: -0.015em;
+      }
+      h2 {
+        font-size: clamp(1.4rem, 3vw, 1.85rem);
+        letter-spacing: -0.01em;
+      }
+      h3 {
+        font-size: 1.0625rem;
+        font-family: var(--body);
+        font-weight: 650;
+        letter-spacing: -0.005em;
+      }
+      h4 {
+        font-family: var(--body);
+        font-size: 0.9375rem;
+        font-weight: 650;
+      }
+      p {
+        max-width: 68ch;
+      }
+      strong {
+        font-weight: 650;
+      }
+      a {
+        color: inherit;
+        text-decoration-color: var(--line-2);
+        text-underline-offset: 2px;
+      }
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--app);
+        outline-offset: 3px;
+      }
+
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      code,
+      .mono {
+        font-family: var(--mono);
+        font-size: 0.8125em;
+      }
+      code {
+        color: var(--ink-2);
+      }
+
+      pre {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        line-height: 1.6;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        padding: 0.7rem 0.8rem;
+        overflow-x: auto;
+        color: var(--ink-2);
+      }
+      pre .cm {
+        color: var(--muted);
+      }
+      pre .hi {
+        color: var(--app);
+        font-weight: 600;
+      }
+      pre .hi2 {
+        color: var(--pkg);
+        font-weight: 600;
+      }
+
+      /* ---------- masthead ---------- */
+
+      .masthead {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .masthead p.lede {
+        font-size: 1.0625rem;
+        color: var(--ink-2);
+        max-width: 64ch;
+      }
+      .rule-top {
+        border-top: 2px solid var(--ink);
+        padding-top: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .rule-top .sibling {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        color: var(--muted);
+      }
+
+      .theme-toggle {
+        margin-left: auto;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        padding: 0.2rem 0.55rem;
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .theme-toggle:hover {
+        color: var(--ink);
+        border-color: var(--line-2);
+      }
+
+      /* ---------- answers up front ---------- */
+
+      .qa {
+        display: grid;
+        gap: 1px;
+        background: var(--line);
+        border: 1px solid var(--line);
+      }
+      .qa .item {
+        background: var(--surface);
+        padding: 0.9rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .qa .item .q {
+        font-family: var(--display);
+        font-size: 1.0625rem;
+        font-weight: 600;
+      }
+      .qa .item p {
+        font-size: 0.9375rem;
+        color: var(--ink-2);
+        max-width: 72ch;
+      }
+      .qa .item .jump {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        color: var(--muted);
+      }
+
+      /* ---------- section shell ---------- */
+
+      section {
+        display: flex;
+        flex-direction: column;
+        gap: 1.15rem;
+      }
+      .sec-head {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        border-top: 1px solid var(--line-2);
+        padding-top: 0.9rem;
+      }
+
+      /* ---------- three request lanes ---------- */
+
+      .lanes {
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+      }
+      .lane {
+        border: 1px solid var(--line);
+        border-top: 2px solid var(--tone);
+        background: var(--surface);
+        padding: 0.85rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .lane.a {
+        --tone: var(--app);
+      }
+      .lane.b {
+        --tone: var(--client);
+      }
+      .lane.c {
+        --tone: var(--warn);
+      }
+      .lane .eyebrow {
+        color: var(--tone);
+      }
+      .lane p {
+        font-size: 0.8125rem;
+        color: var(--ink-2);
+        max-width: none;
+      }
+      .lane .hops {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        margin-top: 0.1rem;
+      }
+      .lane .hop {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        color: var(--muted);
+        display: flex;
+        gap: 0.4rem;
+      }
+      .lane .hop b {
+        color: var(--ink-2);
+        font-weight: 600;
+      }
+      .lane .verdict {
+        font-size: 0.75rem;
+        font-family: var(--mono);
+        color: var(--tone);
+        border-top: 1px dashed var(--line-2);
+        padding-top: 0.4rem;
+        margin-top: auto;
+      }
+
+      /* ---------- layered walk ---------- */
+
+      .walk {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        background: var(--line);
+        border: 1px solid var(--line);
+        counter-reset: step;
+      }
+      .walk > li {
+        background: var(--surface);
+        padding: 0.75rem 0.9rem;
+        display: grid;
+        grid-template-columns: 1.8rem 1fr;
+        gap: 0.15rem 0.7rem;
+        align-items: baseline;
+      }
+      .walk > li::before {
+        counter-increment: step;
+        content: counter(step);
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        color: var(--tone, var(--muted));
+        font-variant-numeric: tabular-nums;
+      }
+      .walk > li.br {
+        --tone: var(--client);
+      }
+      .walk > li.sv {
+        --tone: var(--app);
+      }
+      .walk > li.dl {
+        --tone: var(--pkg);
+      }
+      .walk > li.dk {
+        --tone: var(--store);
+      }
+      .walk .hd {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .walk .hd .where {
+        font-family: var(--mono);
+        font-size: 0.625rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border: 1px solid var(--tone, var(--line));
+        color: var(--tone, var(--muted));
+        padding: 0 0.3rem;
+        border-radius: 2px;
+        white-space: nowrap;
+      }
+      .walk .hd .what {
+        font-weight: 600;
+        font-size: 0.9375rem;
+      }
+      .walk .body {
+        grid-column: 2;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      .walk .body code {
+        color: var(--ink-2);
+      }
+
+      /* ---------- callout ---------- */
+
+      .callout {
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--warn);
+        background: var(--surface);
+        padding: 0.9rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .callout.ok {
+        border-left-color: var(--pkg);
+      }
+      .callout p {
+        font-size: 0.9375rem;
+        color: var(--ink-2);
+      }
+
+      /* ---------- side-by-side ---------- */
+
+      .vs {
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+      }
+      .vs .side {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 0.85rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        border-top: 2px solid var(--tone);
+      }
+      .vs .side.no {
+        --tone: var(--warn);
+      }
+      .vs .side.yes {
+        --tone: var(--pkg);
+      }
+      .vs .side .eyebrow {
+        color: var(--tone);
+      }
+      .vs .side p {
+        font-size: 0.8125rem;
+        color: var(--ink-2);
+        max-width: none;
+      }
+
+      /* ---------- tables ---------- */
+
+      .scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.875rem;
+        min-width: 36rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.6rem 0.8rem;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      thead th {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 400;
+        background: var(--surface-2);
+        white-space: nowrap;
+      }
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      td.mono,
+      td .mono {
+        color: var(--ink-2);
+      }
+      td b {
+        font-weight: 650;
+      }
+      .src {
+        color: var(--muted);
+        font-size: 0.8125rem;
+      }
+
+      /* ---------- notes ---------- */
+
+      .notes {
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+      }
+      .note-card {
+        border: 1px solid var(--line);
+        border-top: 2px solid var(--warn);
+        background: var(--surface);
+        padding: 0.8rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .note-card.ok {
+        border-top-color: var(--pkg);
+      }
+      .note-card p {
+        font-size: 0.875rem;
+        color: var(--ink-2);
+        max-width: none;
+      }
+      .note-card .eyebrow {
+        color: var(--muted);
+      }
+
+      footer.foot {
+        border-top: 1px solid var(--line-2);
+        padding-top: 0.9rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      footer.foot p {
+        max-width: none;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        a {
+          transition: text-decoration-color 120ms ease;
+        }
+        a:hover {
+          text-decoration-color: currentColor;
+        }
+      }
+
+      @media print {
+        .theme-toggle {
+          display: none;
+        }
+        body {
+          background: #fff;
+          color: #000;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <div class="rule-top">
+          <span class="eyebrow"
+            >GlowRoot · request flow &amp; technology decisions</span
+          >
+          <span class="sibling">for review · July 2026</span>
+          <button
+            class="theme-toggle"
+            type="button"
+            id="themeToggle"
+            aria-live="polite"
+          >
+            Dark
+          </button>
+        </div>
+        <h1>
+          Every screen is one of three kinds of request.<br />Only two of them
+          reach the server.
+        </h1>
+        <p class="lede">
+          This document walks a real user request down through the layers, shows
+          exactly where an order goes today, and states why the stack is Next.js
+          rather than a plain React app. The decisions quoted here are the ones
+          recorded in <code>docs/frontend.md</code> and
+          <code>docs/customer-journey.md</code> before the build started — not
+          reasons assembled afterwards.
+        </p>
+
+        <div class="qa">
+          <div class="item">
+            <span class="q"
+              >“How does a user place an order with no backend?”</span
+            >
+            <p>
+              There <em>is</em> server-side code — it just isn't a separate
+              service. Next.js runs a Node server, and the order-placing
+              function executes there, never in the browser. What the project
+              doesn't have yet is a <strong>database</strong> and a
+              <strong>standalone API</strong>. Orders are appended to a JSON
+              file at the repository root, which both apps read. That was the
+              plan's Phase&nbsp;2/3 target; a real database is Phase&nbsp;4.
+            </p>
+            <span class="jump">→ Figure 4</span>
+          </div>
+          <div class="item">
+            <span class="q">“Why Next.js and not plain React?”</span>
+            <p>
+              Three requirements decided it: the storefront is a public
+              marketing asset that must be indexable and fast on first paint;
+              the admin panel is data-heavy and better rendered on the server;
+              and a two-person-scale project should not have to build and
+              version its own API tier. Next.js answers all three. A plain React
+              SPA answers none of them without extra services.
+            </p>
+            <span class="jump">→ Figures 5 and 6</span>
+          </div>
+          <div class="item">
+            <span class="q">“What does this cost us?”</span>
+            <p>
+              Two real constraints before production: the two apps only see the
+              same orders because they share a filesystem, and the JSON file has
+              no write-locking. Both are fixed by the same Phase&nbsp;4 change —
+              swapping one package's internals for a database. Nothing above
+              that package has to change.
+            </p>
+            <span class="jump">→ Figures 7 and 8</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============ FIG 1 ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 1</span>
+          <h2>The three kinds of request</h2>
+          <p>
+            This is the whole mental model. Every click in the app is one of
+            these three, and knowing which one it is tells you exactly how far
+            down the layers it travels.
+          </p>
+        </div>
+
+        <div class="lanes">
+          <div class="lane a">
+            <span class="eyebrow">Type A · page view</span>
+            <h3>Server renders, browser paints</h3>
+            <p>
+              Opening any URL — home, a product, the plans page, an admin table.
+            </p>
+            <div class="hops">
+              <span class="hop"><b>1</b> browser asks for a URL</span>
+              <span class="hop"><b>2</b> server matches the folder</span>
+              <span class="hop"><b>3</b> server reads the data</span>
+              <span class="hop"><b>4</b> server returns finished HTML</span>
+              <span class="hop"
+                ><b>5</b> browser paints, then wakes the buttons</span
+              >
+            </div>
+            <span class="verdict">Round trip · content arrives complete</span>
+          </div>
+          <div class="lane b">
+            <span class="eyebrow">Type B · interaction</span>
+            <h3>Never leaves the browser</h3>
+            <p>
+              Add to cart, change quantity, open the mega-menu, set a pincode,
+              toggle weekly/monthly.
+            </p>
+            <div class="hops">
+              <span class="hop"><b>1</b> click handled in the browser</span>
+              <span class="hop"><b>2</b> shared cart state updates</span>
+              <span class="hop"><b>3</b> saved to browser storage</span>
+              <span class="hop"><b>4</b> UI re-renders instantly</span>
+            </div>
+            <span class="verdict">No server contact at all</span>
+          </div>
+          <div class="lane c">
+            <span class="eyebrow">Type C · mutation</span>
+            <h3>Server action round trip</h3>
+            <p>
+              Place an order, log in, sign up, look up an order, change an
+              order's status in admin.
+            </p>
+            <div class="hops">
+              <span class="hop"><b>1</b> browser calls a server function</span>
+              <span class="hop"><b>2</b> server validates and acts</span>
+              <span class="hop"><b>3</b> server writes to disk</span>
+              <span class="hop"><b>4</b> result returns to the browser</span>
+            </div>
+            <span class="verdict">Round trip · no REST endpoint involved</span>
+          </div>
+        </div>
+
+        <div class="callout ok">
+          <span class="eyebrow">Why this split matters commercially</span>
+          <p>
+            Type B is the reason the site feels instant while shopping — the
+            entire browsing and cart experience costs the server nothing. Type A
+            is the reason a product page can be found on Google, because the
+            page's text exists in the very first response rather than appearing
+            after JavaScript runs. Type C is the only path that can change
+            stored data, which makes it the only path that needs validating —
+            and it's validated on the server, where a customer can't bypass it.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ FIG 2 ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 2</span>
+          <h2>Type A in full: opening a product page</h2>
+          <p>
+            A customer clicks <em>Summer Crush</em>. Here is every layer that
+            request passes through, in order, with where the code lives.
+          </p>
+        </div>
+
+        <ol class="walk">
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser</span
+              ><span class="what">Request goes out</span>
+            </div>
+            <div class="body">
+              <code>GET /products/summer-crush</code> to the storefront process
+              on port 3000. No JavaScript needed yet — this works with scripts
+              disabled.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">server · routing</span
+              ><span class="what">The folder path <em>is</em> the route</span>
+            </div>
+            <div class="body">
+              Next matches the URL to
+              <code>app/products/[slug]/page.tsx</code> and hands it
+              <code>slug = "summer-crush"</code>. There is no route table to
+              maintain — see figure 6.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">server · layout</span
+              ><span class="what">The shared shell wraps it</span>
+            </div>
+            <div class="body">
+              <code>app/layout.tsx</code> supplies the header, footer, cart
+              island and the two state providers to every page automatically.
+              Nothing is repeated per route.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">server · render</span
+              ><span class="what">The page runs on the server</span>
+            </div>
+            <div class="body">
+              It awaits three data calls — <code>getProductBySlug</code>,
+              <code>getProducts</code>, <code>getMaterials</code> — and builds
+              the finished markup. This code never ships to the browser, so the
+              customer's device does none of this work.
+            </div>
+          </li>
+          <li class="dl">
+            <div class="hd">
+              <span class="where">data layer</span
+              ><span class="what">One package answers every question</span>
+            </div>
+            <div class="body">
+              <code>@glowroot/data</code> is the only door to data in the whole
+              system. Today the catalogue lives in TypeScript files it reads
+              in-process; tomorrow the same call reaches a database. The page
+              can't tell the difference.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">server · response</span
+              ><span class="what">Complete HTML goes back</span>
+            </div>
+            <div class="body">
+              The customer's first paint contains the real product name, price,
+              ingredients and image — which is what makes the page indexable and
+              fast, the reason recorded in <code>customer-journey.md</code> for
+              not gating the catalogue behind a pincode.
+            </div>
+          </li>
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser</span
+              ><span class="what">Only the interactive parts wake up</span>
+            </div>
+            <div class="body">
+              Just one component on this page ships JavaScript: the
+              <em>Add to order</em> button. Across the whole codebase, 12 of 36
+              components never reach the browser at all — detailed in
+              <code>component-architecture.html</code>.
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ============ FIG 3 ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 3</span>
+          <h2>Type B in full: adding to the cart</h2>
+          <p>
+            Worth showing because it explains a question that often comes up —
+            how the cart survives a page reload when there's no backend storing
+            it.
+          </p>
+        </div>
+
+        <ol class="walk">
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser</span
+              ><span class="what">The button is clicked</span>
+            </div>
+            <div class="body">
+              Handled entirely in the page already loaded. No request leaves the
+              device.
+            </div>
+          </li>
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser · shared state</span
+              ><span class="what">The cart updates in one place</span>
+            </div>
+            <div class="body">
+              A single shared cart holds every line item. That's why the header
+              count, the floating cart bar and the checkout summary all agree
+              without talking to each other.
+            </div>
+          </li>
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser · storage</span
+              ><span class="what">Written to the browser's own storage</span>
+            </div>
+            <div class="body">
+              Under the key <code>glowroot.cart</code>. This is what survives a
+              reload — the cart is saved <em>on the customer's device</em>, not
+              on our server. Consequence: it does not follow them to a second
+              device, and clearing browser data clears the cart.
+            </div>
+          </li>
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser</span
+              ><span class="what">The bottle flies to the cart</span>
+            </div>
+            <div class="body">
+              The animation requested in <code>key-improvements.md</code> item
+              4. Pure browser work — no latency, so it can be tuned freely.
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ============ FIG 4 ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 4</span>
+          <h2>Type C in full: how an order is placed today</h2>
+          <p>
+            The question this document was written for. Below, exactly what
+            happens between pressing <em>Place order</em> and the order
+            appearing in the admin panel.
+          </p>
+        </div>
+
+        <div class="callout">
+          <span class="eyebrow">First, a correction worth making</span>
+          <p>
+            “No backend” isn't quite the situation. Next.js
+            <strong>is</strong> the backend: it runs a Node server process, and
+            <code>placeOrder</code> executes there — the browser only sends
+            arguments and receives a result, exactly like calling an API. What's
+            genuinely absent is a <strong>database</strong> and a
+            <strong>separate API service</strong>. Server-side validation,
+            pricing and persistence all exist today; they just persist to a file
+            instead of Postgres. This was deliberate:
+            <code>frontend.md</code> logs the data decision as “mock / local
+            data — design the shapes first; add a real DB in a later phase.”
+          </p>
+        </div>
+
+        <ol class="walk">
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser</span
+              ><span class="what"
+                >The checkout form calls a server function</span
+              >
+            </div>
+            <div class="body">
+              The customer's name, address, pincode, delivery date and slot,
+              cart contents and payment choice are passed to
+              <code>placeOrder</code>. No URL is constructed, no
+              <code>fetch</code> is written — the call looks like an ordinary
+              function call in the code.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">server · gate 1</span
+              ><span class="what">Does this email have an account?</span>
+            </div>
+            <div class="body">
+              Checked on the server, so it holds even if someone bypasses the
+              form. <em>Current limitation:</em> it proves the email belongs to
+              a registered account, not that the caller is that person — real
+              sessions are Phase 4.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">server · gate 2</span
+              ><span class="what">Can we deliver to this pincode?</span>
+            </div>
+            <div class="body">
+              The hard check the UX contract requires before money changes
+              hands. <em>Currently switched off</em> by an override flag that
+              accepts any valid 6-digit pincode, so orders can be placed
+              anywhere during the demo.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">server · pricing</span
+              ><span class="what">The total is calculated server-side</span>
+            </div>
+            <div class="body">
+              One-time orders sum quantity × price; subscriptions take the
+              plan's price for the chosen cycle. Deliberately not trusted from
+              the browser, where it could be edited.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">server · payment</span
+              ><span class="what">The mock gateway runs</span>
+            </div>
+            <div class="body">
+              Validates the UPI ID or card number, pauses ~900 ms so the
+              “contacting your bank” state is real, and returns a payment record
+              already shaped the way a live provider would return one. Cash on
+              delivery comes back <em>pending</em> rather than <em>paid</em>.
+              Critically, this runs <strong>before</strong> anything is saved —
+              a decline leaves no order behind.
+            </div>
+          </li>
+          <li class="dk">
+            <div class="hd">
+              <span class="where">disk</span
+              ><span class="what">The order is appended to a file</span>
+            </div>
+            <div class="body">
+              <code>.glowroot-orders.json</code> at the repository root. The
+              order gets an ID like <code>GR-4821</code>, opens at
+              <em>confirmed</em> when paid or <em>pending</em> for cash on
+              delivery, and starts a status history the customer's tracking page
+              later reads.
+            </div>
+          </li>
+          <li class="dk">
+            <div class="hd">
+              <span class="where">disk</span
+              ><span class="what">The customer's details are remembered</span>
+            </div>
+            <div class="body">
+              Saved into <code>.glowroot-users.json</code> so the next checkout
+              prefills. A guest who never set a password still gets a record,
+              and can claim their whole order history later by signing up with
+              the same email.
+            </div>
+          </li>
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser</span
+              ><span class="what">Confirmation</span>
+            </div>
+            <div class="body">
+              The order ID comes back and the customer lands on the success page
+              with delivery date, slot, items and total.
+            </div>
+          </li>
+          <li class="sv">
+            <div class="hd">
+              <span class="where">admin · port 3001</span
+              ><span class="what">Operations sees it</span>
+            </div>
+            <div class="body">
+              The second app reads the same file, so the order is on the orders
+              list and counted in the dashboard KPIs on its next render. Staff
+              change the status; that appends to the order's history.
+            </div>
+          </li>
+          <li class="br">
+            <div class="hd">
+              <span class="where">browser</span
+              ><span class="what">The customer tracks it</span>
+            </div>
+            <div class="body">
+              Signed in, via their account's order list. As a guest, via the
+              public tracking page — which requires the order ID
+              <em>and</em> the email it was placed with, because an order ID
+              alone is guessable.
+            </div>
+          </li>
+        </ol>
+
+        <h3 style="margin-top: 0.5rem">Where the order physically lives</h3>
+        <pre><span class="cm">// GlowRoot-final/.glowroot-orders.json — newest first, rewritten whole on each change</span>
+[
+  {
+    "id": "<span class="hi">GR-4821</span>",
+    "customer": { "name": "…", "email": "…", "address": "…" },
+    "items":    [ { "productSlug": "summer-crush", "qty": 3, "priceINR": 180 } ],
+    "type": "one-time",
+    "status": "<span class="hi">confirmed</span>",
+    "totalINR": 540,
+    "payment":  { "method": "upi", "status": "paid", "reference": "PAY-…" },
+    "history":  [ { "status": "confirmed", "at": "2026-07-30T…" } ]
+  },
+  <span class="cm">… 6 seed orders</span>
+]</pre>
+
+        <div class="callout ok">
+          <span class="eyebrow">Why a file rather than browser storage</span>
+          <p>
+            The original plan set a lower bar for this phase — “you can place an
+            order (stored in memory/localStorage)”. The build went further to a
+            shared file because Phase 3 required that
+            <em>an order placed in the storefront shows up in admin</em>, and
+            browser storage can't do that: the admin panel is a different app
+            that never sees the customer's browser. One file at the repository
+            root is the smallest thing both processes can agree on.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ FIG 5 ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 5</span>
+          <h2>Why Next.js rather than a plain React app</h2>
+          <p>
+            Requirement first, then what each option demands. The right-hand
+            column is what the project gets for free today.
+          </p>
+        </div>
+
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>What the product needs</th>
+                <th>Plain React (Vite + React&nbsp;Router)</th>
+                <th>Next.js App Router</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <b>A storefront Google can index</b>
+                  <div class="src">
+                    The landing page is the strongest marketing asset —
+                    <code>customer-journey.md</code>
+                  </div>
+                </td>
+                <td>
+                  First response is an empty page; content appears only after
+                  JavaScript downloads and runs. Fixing it means adding a
+                  separate server-rendering setup.
+                </td>
+                <td>
+                  Real HTML in the first response, by default. Nothing to add.
+                </td>
+              </tr>
+              <tr>
+                <td><b>No API tier to build and version</b></td>
+                <td>
+                  Needs its own REST or GraphQL service, plus a fetch layer,
+                  plus loading and error states on every screen.
+                </td>
+                <td>
+                  Pages read the data layer directly; forms call server
+                  functions. The API tier simply doesn't exist as work.
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <b>A data-heavy admin panel</b>
+                  <div class="src">
+                    “Server components suit both a storefront and a data-heavy
+                    admin” — <code>frontend.md §2</code>
+                  </div>
+                </td>
+                <td>
+                  Every table is a client fetch with a spinner and its own cache
+                  handling.
+                </td>
+                <td>
+                  Tables render on the server with the data already in hand. The
+                  admin ships just two interactive components in total.
+                </td>
+              </tr>
+              <tr>
+                <td><b>20 routes across two apps</b></td>
+                <td>
+                  A route configuration file to keep in sync with the components
+                  by hand.
+                </td>
+                <td>
+                  The folder tree <em>is</em> the routes. Adding a page cannot
+                  get out of sync — see figure 6.
+                </td>
+              </tr>
+              <tr>
+                <td><b>One shared shell per app</b></td>
+                <td>
+                  Wrap every route yourself, or adopt a layout-route pattern and
+                  maintain it.
+                </td>
+                <td>
+                  A single <code>layout.tsx</code> applies to everything beneath
+                  it, nested as deep as needed.
+                </td>
+              </tr>
+              <tr>
+                <td><b>Ship as little JavaScript as possible</b></td>
+                <td>
+                  Every component is browser code by definition — that's the
+                  model.
+                </td>
+                <td>
+                  Components are server-side unless marked otherwise. 12 of 36
+                  never reach the browser.
+                </td>
+              </tr>
+              <tr>
+                <td><b>Fast images for a photo-led brand</b></td>
+                <td>Choose and wire up an image pipeline.</td>
+                <td>
+                  <code>next/image</code> is built in — it replaced the
+                  hand-rolled image scaffold from the prototype.
+                </td>
+              </tr>
+              <tr>
+                <td><b>Two apps sharing UI and types</b></td>
+                <td>Workable — this one isn't a Next-specific advantage.</td>
+                <td>
+                  Same: handled by the pnpm workspace and Turborepo, not by the
+                  framework.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="src" style="max-width: 68ch">
+          For completeness: the monorepo tooling choice was separate and made on
+          its own merits — Turborepo + pnpm as “industry standard for Next.js
+          monorepos, minimal config, fast caching” (<code>frontend.md §2</code
+          >). That decision would stand with or without Next.js.
+        </p>
+      </section>
+
+      <!-- ============ FIG 6 ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 6</span>
+          <h2>Why file-based routing, concretely</h2>
+          <p>
+            The same two product routes, expressed both ways. This is the
+            difference that shows up daily.
+          </p>
+        </div>
+
+        <div class="vs">
+          <div class="side no">
+            <span class="eyebrow">React Router · a config to maintain</span>
+            <pre><span class="cm">// router.tsx — every route listed by hand</span>
+createBrowserRouter([
+  { path: "/",                element: &lt;Home/&gt; },
+  { path: "/products",        element: &lt;List/&gt; },
+  { path: "/products/:slug",  element: &lt;Detail/&gt; },
+  <span class="cm">… 17 more, kept in sync manually</span>
+])
+
+<span class="cm">// Detail.tsx — data is the component's problem</span>
+const [product, setProduct] = useState(null)
+useEffect(() =&gt; {
+  <span class="hi">fetch(`/api/products/${slug}`)</span>   <span class="cm">// ← an API
+                                        //   you must build</span>
+    .then(r =&gt; r.json()).then(setProduct)
+}, [slug])
+if (!product) return &lt;Spinner/&gt;</pre>
+            <p>
+              Three things to keep aligned: the URL, the config entry, and the
+              component. Plus an API endpoint and a loading state for every
+              screen.
+            </p>
+          </div>
+          <div class="side yes">
+            <span class="eyebrow">Next.js · the folder is the route</span>
+            <pre><span class="cm">// no router file exists</span>
+app/
+├── page.tsx                  <span class="cm">→ /</span>
+├── products/
+│   ├── page.tsx              <span class="cm">→ /products</span>
+│   └── [slug]/page.tsx       <span class="cm">→ /products/summer-crush</span>
+└── layout.tsx                <span class="cm">→ wraps all of them</span>
+
+<span class="cm">// [slug]/page.tsx — data is fetched before render</span>
+const product = <span class="hi2">await getProductBySlug(slug)</span>
+if (!product) notFound()
+return &lt;article&gt;…&lt;/article&gt;
+
+<span class="cm">// no fetch, no endpoint, no spinner, no useState</span></pre>
+            <p>
+              Creating the file creates the route. The page can't render before
+              its data exists, so the loading state isn't needed — and the data
+              call never leaves the server.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout ok">
+          <span class="eyebrow">The practical upshot</span>
+          <p>
+            Both readings of “why routing this way” land in the same place.
+            <strong>File-based over a route config:</strong> 20 routes and no
+            list to maintain, so a URL and its page cannot drift apart.
+            <strong>Server routing over a browser-only router:</strong> each URL
+            is a real server response, so product pages are shareable, indexable
+            and quick on first load — which the UX contract requires of a public
+            storefront.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ FIG 7 ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 7</span>
+          <h2>What the current approach costs</h2>
+          <p>
+            Stated plainly, so the trade-offs are on the record alongside the
+            benefits.
+          </p>
+        </div>
+        <div class="notes">
+          <div class="note-card">
+            <span class="eyebrow">Blocks production</span>
+            <h3>The two apps need a shared filesystem</h3>
+            <p>
+              They only agree on orders because both resolve the same file path
+              on the same machine. Deployed to separate hosts — the normal
+              arrangement, and the one <code>frontend.md</code> anticipates on
+              Vercel — they would silently stop seeing each other's data. This
+              must be resolved before launch, not after.
+            </p>
+          </div>
+          <div class="note-card">
+            <span class="eyebrow">Data risk</span>
+            <h3>No write-locking on the order file</h3>
+            <p>
+              Each change rewrites the whole file. A checkout landing at the
+              same instant as an admin status change can lose one of the two.
+              Acceptable for a demo with one tester; not acceptable with real
+              customers.
+            </p>
+          </div>
+          <div class="note-card">
+            <span class="eyebrow">Future work</span>
+            <h3>There's no API for anything else to call</h3>
+            <p>
+              Server actions are reachable only from these two apps. A mobile
+              app, a partner integration or a delivery-partner webhook would
+              need a real API layer built — work that a plain React app would
+              have forced up front, for better or worse.
+            </p>
+          </div>
+          <div class="note-card">
+            <span class="eyebrow">Team cost</span>
+            <h3>The server/client boundary must be learned</h3>
+            <p>
+              Knowing which components run where is a genuine skill, and getting
+              it wrong is a common source of build errors. The payoff is the
+              small JavaScript bundle; the cost is onboarding time.
+            </p>
+          </div>
+          <div class="note-card">
+            <span class="eyebrow">Lock-in</span>
+            <h3>These patterns are Next-specific</h3>
+            <p>
+              Server components and server actions don't transfer to another
+              framework as written. Moving away later means real rework — a
+              reasonable bet given the framework's position, but worth naming.
+            </p>
+          </div>
+          <div class="note-card ok">
+            <span class="eyebrow">Contained</span>
+            <h3>The risk sits behind one package</h3>
+            <p>
+              Every one of the above touches only <code>@glowroot/data</code>.
+              All 25 of its data accessors are already asynchronous — written as
+              though they were talking to a database — so swapping the inside
+              for a real one doesn't ripple outward.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ FIG 8 ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 8</span>
+          <h2>What Phase 4 changes — and what it doesn't</h2>
+          <p>
+            The roadmap in <code>frontend.md §7</code> already scopes this. The
+            point of the current structure is how little has to move.
+          </p>
+        </div>
+
+        <div class="vs">
+          <div class="side no">
+            <span class="eyebrow">Today</span>
+            <pre>page / server action
+      ↓
+<span class="hi2">@glowroot/data</span>  <span class="cm">← 25 async accessors</span>
+      ↓
+  store.ts / users.ts
+      ↓
+  <span class="hi">JSON files on disk</span></pre>
+            <p>Two apps, one shared disk, no database.</p>
+          </div>
+          <div class="side yes">
+            <span class="eyebrow">Phase 4</span>
+            <pre>page / server action     <span class="cm">← unchanged</span>
+      ↓
+<span class="hi2">@glowroot/data</span>  <span class="cm">← same 25 signatures</span>
+      ↓
+  Prisma client         <span class="cm">← replaces store.ts</span>
+      ↓
+  <span class="hi">Postgres</span></pre>
+            <p>Two apps, one database, deployable to separate hosts.</p>
+          </div>
+        </div>
+
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Phase 4 item</th>
+                <th>Replaces</th>
+                <th>Touches the apps?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Postgres + Prisma</b></td>
+                <td class="mono">store.ts · users.ts</td>
+                <td>No — accessor signatures already async</td>
+              </tr>
+              <tr>
+                <td><b>Real sessions &amp; admin auth</b></td>
+                <td>Browser-stored session; unauthenticated admin</td>
+                <td>
+                  <b>Yes</b> — actions read identity from the session instead of
+                  an argument
+                </td>
+              </tr>
+              <tr>
+                <td><b>Payment gateway (Razorpay)</b></td>
+                <td class="mono">the mock charge()</td>
+                <td>No — it already returns the real payment shape</td>
+              </tr>
+              <tr>
+                <td><b>Service-area API</b></td>
+                <td>Pincode allow-list + override flag</td>
+                <td>No</td>
+              </tr>
+              <tr>
+                <td><b>Inventory deduction</b></td>
+                <td>Nothing — new capability</td>
+                <td>No — each product already carries its material recipe</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          <span class="eyebrow">The one item that isn't a drop-in</span>
+          <p>
+            Real sessions are the exception. Today the customer's email is sent
+            from the browser with each request, which proves an account exists
+            but not who is calling. Phase 4 moves identity to a server-held
+            session, and the order-reading and order-placing functions change to
+            read it from there. That's the single place where “swap one package”
+            isn't the whole story — worth planning for rather than discovering.
+          </p>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <p>
+          Decisions quoted from <span class="mono">docs/frontend.md</span> (§2
+          decisions, §7 roadmap) and
+          <span class="mono">docs/customer-journey.md</span> (serviceability and
+          SEO rationale). Flow steps traced from
+          <span class="mono">app/checkout/actions.ts</span>,
+          <span class="mono"
+            >packages/data/src/{store,users,serviceability}.ts</span
+          >
+          and both apps' route folders. Companion documents:
+          <span class="mono">architecture.html</span> (runtime and persistence
+          view) and
+          <span class="mono">component-architecture.html</span> (component tree
+          and the server/client boundary).
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var button = document.getElementById("themeToggle");
+        var KEY = "glowroot.docs.theme";
+
+        function systemPrefersDark() {
+          return (
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches
+          );
+        }
+
+        function isDark() {
+          var explicit = root.getAttribute("data-theme");
+          if (explicit) return explicit === "dark";
+          return systemPrefersDark();
+        }
+
+        function paint() {
+          // The button offers the theme you'd switch *to*.
+          button.textContent = isDark() ? "Light" : "Dark";
+        }
+
+        try {
+          var saved = window.localStorage.getItem(KEY);
+          if (saved === "dark" || saved === "light")
+            root.setAttribute("data-theme", saved);
+        } catch (e) {
+          /* private mode — fall back to the OS preference */
+        }
+
+        paint();
+
+        button.addEventListener("click", function () {
+          var next = isDark() ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try {
+            window.localStorage.setItem(KEY, next);
+          } catch (e) {
+            /* ignore */
+          }
+          paint();
+        });
+
+        if (window.matchMedia) {
+          window
+            .matchMedia("(prefers-color-scheme: dark)")
+            .addEventListener("change", function () {
+              if (!root.getAttribute("data-theme")) paint();
+            });
+        }
+      })();
+    </script>
+  </body>
+</html>

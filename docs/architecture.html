@@ -1,0 +1,1304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GlowRoot — Architecture</title>
+    <style>
+      /* ---------- reset ---------- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+      }
+      h1,
+      h2,
+      h3,
+      p,
+      ol,
+      ul,
+      figure {
+        margin: 0;
+      }
+      ol,
+      ul {
+        padding: 0;
+      }
+      img,
+      svg {
+        max-width: 100%;
+        display: block;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+
+      :root {
+        /* neutrals, biased faintly green — the brand's own hue, desaturated */
+        --paper: #f6f7f3;
+        --surface: #ffffff;
+        --surface-2: #edefe8;
+        --ink: #171b18;
+        --ink-2: #3d4540;
+        --muted: #6e7872;
+        --line: #d8dcd2;
+        --line-2: #bfc5b9;
+
+        /* layer accents, drawn from what GlowRoot presses */
+        --client: #3f6070; /* slate — the browser */
+        --app: #94285a; /* beet — the Next apps */
+        --pkg: #3b6644; /* leaf — shared packages */
+        --store: #8a5c0b; /* carrot — persistence */
+        --warn: #a03818;
+
+        --display:
+          "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua",
+          ui-serif, Georgia, serif;
+        --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --mono:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #101311;
+          --surface: #181c19;
+          --surface-2: #212622;
+          --ink: #edf0ea;
+          --ink-2: #c4cbc2;
+          --muted: #8d968c;
+          --line: #2c322d;
+          --line-2: #3d453e;
+
+          --client: #8fb4c6;
+          --app: #e58bb0;
+          --pkg: #8fc79c;
+          --store: #d9ac5a;
+          --warn: #e89372;
+        }
+      }
+
+      /* explicit choice from the toggle wins over the OS preference, both ways */
+      :root[data-theme="light"] {
+        --paper: #f6f7f3;
+        --surface: #ffffff;
+        --surface-2: #edefe8;
+        --ink: #171b18;
+        --ink-2: #3d4540;
+        --muted: #6e7872;
+        --line: #d8dcd2;
+        --line-2: #bfc5b9;
+        --client: #3f6070;
+        --app: #94285a;
+        --pkg: #3b6644;
+        --store: #8a5c0b;
+        --warn: #a03818;
+      }
+
+      :root[data-theme="dark"] {
+        --paper: #101311;
+        --surface: #181c19;
+        --surface-2: #212622;
+        --ink: #edf0ea;
+        --ink-2: #c4cbc2;
+        --muted: #8d968c;
+        --line: #2c322d;
+        --line-2: #3d453e;
+        --client: #8fb4c6;
+        --app: #e58bb0;
+        --pkg: #8fc79c;
+        --store: #d9ac5a;
+        --warn: #e89372;
+      }
+
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--body);
+        font-size: 1rem;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page {
+        max-width: 74rem;
+        margin: 0 auto;
+        padding: clamp(1.75rem, 4vw, 4rem) clamp(1.1rem, 4vw, 3rem) 5rem;
+        display: flex;
+        flex-direction: column;
+        gap: clamp(2.75rem, 5vw, 4.5rem);
+      }
+
+      /* ---------- type ---------- */
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        font-weight: 600;
+        text-wrap: balance;
+        line-height: 1.15;
+      }
+      h1 {
+        font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+        letter-spacing: -0.015em;
+      }
+      h2 {
+        font-size: clamp(1.4rem, 3vw, 1.85rem);
+        letter-spacing: -0.01em;
+      }
+      h3 {
+        font-size: 1.0625rem;
+        font-family: var(--body);
+        font-weight: 650;
+        letter-spacing: -0.005em;
+      }
+      p {
+        max-width: 66ch;
+      }
+      a {
+        color: inherit;
+        text-decoration-color: var(--line-2);
+        text-underline-offset: 2px;
+      }
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--app);
+        outline-offset: 3px;
+      }
+
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      code,
+      .mono {
+        font-family: var(--mono);
+        font-size: 0.8125em;
+      }
+      code {
+        color: var(--ink-2);
+      }
+
+      /* ---------- masthead ---------- */
+
+      .masthead {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .masthead p.lede {
+        font-size: 1.0625rem;
+        color: var(--ink-2);
+        max-width: 60ch;
+      }
+      .rule-top {
+        border-top: 2px solid var(--ink);
+        padding-top: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .theme-toggle {
+        margin-left: auto;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        padding: 0.2rem 0.55rem;
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .theme-toggle:hover {
+        color: var(--ink);
+        border-color: var(--line-2);
+      }
+
+      .facts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+        gap: 1px;
+        background: var(--line);
+        border: 1px solid var(--line);
+        margin-top: 0.5rem;
+      }
+      .fact {
+        background: var(--surface);
+        padding: 0.8rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .fact b {
+        font-family: var(--display);
+        font-size: 1.6rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+      .fact span {
+        font-family: var(--mono);
+        font-size: 0.625rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      /* ---------- section shell ---------- */
+
+      section {
+        display: flex;
+        flex-direction: column;
+        gap: 1.15rem;
+      }
+      .sec-head {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        border-top: 1px solid var(--line-2);
+        padding-top: 0.9rem;
+      }
+
+      /* ---------- the map ---------- */
+
+      .map {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .layer {
+        border: 1px solid var(--line);
+        background: var(--surface-2);
+        padding: 0.85rem;
+      }
+      .layer > .layer-tag {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.7rem;
+      }
+      .layer > .layer-tag .dot {
+        width: 7px;
+        height: 7px;
+        background: var(--tone);
+        flex: none;
+      }
+      .layer > .layer-tag .eyebrow {
+        color: var(--tone);
+      }
+      .layer > .layer-tag .note {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        color: var(--muted);
+        margin-left: auto;
+        text-align: right;
+      }
+
+      .l-client {
+        --tone: var(--client);
+      }
+      .l-app {
+        --tone: var(--app);
+      }
+      .l-pkg {
+        --tone: var(--pkg);
+      }
+      .l-store {
+        --tone: var(--store);
+      }
+
+      .cols {
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+      }
+      .cols.two {
+        grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+      }
+
+      .box {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        padding: 0.75rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        min-width: 0;
+      }
+      .box > .hd {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .box > .hd .port {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        color: var(--tone);
+      }
+      .box .sub {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+      }
+      .chip {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        padding: 0.15rem 0.4rem;
+        border: 1px solid var(--line);
+        background: var(--surface-2);
+        color: var(--ink-2);
+        border-radius: 2px;
+        white-space: nowrap;
+      }
+      .chip.k {
+        border-color: var(--tone);
+        color: var(--tone);
+        background: transparent;
+      }
+
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+      .stack .row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: baseline;
+        font-size: 0.8125rem;
+      }
+      .stack .row .mono {
+        color: var(--tone);
+        flex: none;
+      }
+      .stack .row em {
+        font-style: normal;
+        color: var(--muted);
+      }
+
+      /* gutters between layers */
+      .gutter {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        padding: 0;
+      }
+      .gutter .rule {
+        width: 1px;
+        height: 11px;
+        background: var(--line-2);
+      }
+      .gutter .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        justify-content: center;
+        padding: 0.05rem 0;
+      }
+      .gutter .tag {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        color: var(--ink-2);
+        background: var(--paper);
+        border: 1px dashed var(--line-2);
+        border-radius: 2px;
+        padding: 0.1rem 0.45rem;
+      }
+
+      /* ---------- ordered flow ---------- */
+
+      ol.flow {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        background: var(--line);
+        border: 1px solid var(--line);
+        counter-reset: step;
+      }
+      ol.flow > li {
+        background: var(--surface);
+        padding: 0.8rem 0.95rem;
+        display: grid;
+        grid-template-columns: 1.9rem 1fr;
+        gap: 0 0.7rem;
+        align-items: baseline;
+      }
+      ol.flow > li::before {
+        counter-increment: step;
+        content: counter(step, decimal-leading-zero);
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        color: var(--app);
+        font-variant-numeric: tabular-nums;
+      }
+      ol.flow > li .what {
+        font-weight: 600;
+        font-size: 0.9375rem;
+      }
+      ol.flow > li .where {
+        grid-column: 2;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      ol.flow > li .where code {
+        color: var(--ink-2);
+      }
+      ol.flow > li.gate {
+        background: var(--surface-2);
+      }
+
+      /* ---------- tables ---------- */
+
+      .scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.875rem;
+        min-width: 34rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.55rem 0.8rem;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      thead th {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 400;
+        background: var(--surface-2);
+        white-space: nowrap;
+      }
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      td.mono,
+      td .mono {
+        color: var(--ink-2);
+      }
+      td b {
+        font-weight: 600;
+      }
+
+      /* ---------- notes ---------- */
+
+      .notes {
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+      }
+      .note-card {
+        border: 1px solid var(--line);
+        border-top: 2px solid var(--warn);
+        background: var(--surface);
+        padding: 0.8rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .note-card.ok {
+        border-top-color: var(--pkg);
+      }
+      .note-card p {
+        font-size: 0.875rem;
+        color: var(--ink-2);
+        max-width: none;
+      }
+      .note-card .eyebrow {
+        color: var(--muted);
+      }
+
+      footer.foot {
+        border-top: 1px solid var(--line-2);
+        padding-top: 0.9rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      footer.foot p {
+        max-width: none;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        a {
+          transition: text-decoration-color 120ms ease;
+        }
+        a:hover {
+          text-decoration-color: currentColor;
+        }
+      }
+
+      @media print {
+        .theme-toggle {
+          display: none;
+        }
+        body {
+          background: #fff;
+          color: #000;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <div class="rule-top">
+          <span class="eyebrow"
+            >GlowRoot · system architecture · as built, July 2026</span
+          >
+          <button
+            class="theme-toggle"
+            type="button"
+            id="themeToggle"
+            aria-live="polite"
+          >
+            Dark
+          </button>
+        </div>
+        <h1>
+          Two Next.js apps, five shared packages,<br />and one JSON file they
+          both trust.
+        </h1>
+        <p class="lede">
+          GlowRoot is a Turborepo + pnpm monorepo. A customer
+          <strong>storefront</strong> and an internal
+          <strong>admin</strong> panel run as separate Next.js 14 processes that
+          share types, UI and a single data-access package. There is no API
+          server and no database yet — the two processes meet at JSON files on
+          disk at the repo root, which is exactly the seam a real backend
+          replaces.
+        </p>
+
+        <div class="facts">
+          <div class="fact"><b>2</b><span>Next apps</span></div>
+          <div class="fact"><b>5</b><span>workspace pkgs</span></div>
+          <div class="fact"><b>20</b><span>routes</span></div>
+          <div class="fact"><b>7</b><span>server actions</span></div>
+          <div class="fact"><b>22</b><span>client islands</span></div>
+          <div class="fact"><b>2</b><span>JSON stores</span></div>
+          <div class="fact"><b>0</b><span>databases</span></div>
+        </div>
+      </header>
+
+      <!-- ============ THE MAP ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 1</span>
+          <h2>The system, top to bottom</h2>
+          <p>
+            Each band is a runtime boundary. The labels in the gutters are how
+            the band above reaches the band below.
+          </p>
+        </div>
+
+        <div class="map">
+          <!-- clients -->
+          <div class="layer l-client">
+            <div class="layer-tag">
+              <span class="dot"></span><span class="eyebrow">Browser</span>
+              <span class="note">all session state lives here</span>
+            </div>
+            <div class="cols two">
+              <div class="box">
+                <div class="hd"><h3>Customer browser</h3></div>
+                <div class="sub">
+                  React client islands hydrate over server-rendered pages.
+                  Nothing is kept server-side between requests.
+                </div>
+                <div class="chips">
+                  <span class="chip k">localStorage</span>
+                  <span class="chip">glowroot.cart</span>
+                  <span class="chip">glowroot.pincode</span>
+                  <span class="chip">glowroot.session</span>
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>Staff browser</h3></div>
+                <div class="sub">
+                  Admin is unauthenticated — reachable by anyone who can reach
+                  the port. Access control is a Phase 4 item.
+                </div>
+                <div class="chips">
+                  <span class="chip">no session</span
+                  ><span class="chip">no auth gate</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="gutter">
+            <span class="rule"></span>
+            <div class="tags">
+              <span class="tag">↓ HTTP :3000</span>
+              <span class="tag">↑ RSC payload + Server Action responses</span>
+              <span class="tag">↓ HTTP :3001</span>
+            </div>
+            <span class="rule"></span>
+          </div>
+
+          <!-- apps -->
+          <div class="layer l-app">
+            <div class="layer-tag">
+              <span class="dot"></span
+              ><span class="eyebrow">Apps · Next.js 14 App Router</span>
+              <span class="note">two independent node processes</span>
+            </div>
+            <div class="cols two">
+              <div class="box">
+                <div class="hd">
+                  <h3>storefront</h3>
+                  <span class="port">:3000</span>
+                </div>
+                <div class="sub">
+                  Server components fetch through <code>@glowroot/data</code>;
+                  interactivity is pushed into leaf islands wrapped by two
+                  context providers.
+                </div>
+                <div class="stack">
+                  <div class="row">
+                    <span class="mono">routes</span
+                    ><span
+                      ><em
+                        >/ · /products · /combos · /seasonal · /subscribe ·
+                        /checkout · /login · /account/orders · /track</em
+                      ></span
+                    >
+                  </div>
+                  <div class="row">
+                    <span class="mono">providers</span
+                    ><span
+                      ><em
+                        >AuthProvider (session) → StoreProvider (cart, pincode,
+                        fly-to-cart)</em
+                      ></span
+                    >
+                  </div>
+                  <div class="row">
+                    <span class="mono">islands</span
+                    ><span
+                      ><em
+                        >SiteHeader · CartDrawer · CartIsland · BoxBuilder ·
+                        ComboMenu · PlanGrid · CheckoutClient · AuthForm ·
+                        TrackOrderForm</em
+                      ></span
+                    >
+                  </div>
+                </div>
+                <div class="chips">
+                  <span class="chip k">placeOrder</span>
+                  <span class="chip k">signIn / signUp</span>
+                  <span class="chip k">fetchMyOrders / fetchMyOrder</span>
+                  <span class="chip k">trackOrder</span>
+                </div>
+              </div>
+
+              <div class="box">
+                <div class="hd">
+                  <h3>admin</h3>
+                  <span class="port">:3001</span>
+                </div>
+                <div class="sub">
+                  Almost entirely server components — reads on render, one
+                  action to mutate, then <code>revalidatePath</code>.
+                </div>
+                <div class="stack">
+                  <div class="row">
+                    <span class="mono">routes</span
+                    ><span
+                      ><em
+                        >/ (KPI dashboard) · /orders · /orders/[id] · /products
+                        · /materials · /delivery · /locations · /staff</em
+                      ></span
+                    >
+                  </div>
+                  <div class="row">
+                    <span class="mono">islands</span
+                    ><span
+                      ><em
+                        >AdminNav · StatusChanger · PartnerAssigner ·
+                        LocationsManager · DeliveryPartners</em
+                      ></span
+                    >
+                  </div>
+                </div>
+                <div class="chips">
+                  <span class="chip k">changeStatus</span
+                  ><span class="chip k">assignPartner</span
+                  ><span class="chip k">saveLocation</span
+                  ><span class="chip k">savePartner</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="gutter">
+            <span class="rule"></span>
+            <div class="tags">
+              <span class="tag"
+                >TypeScript import · <span class="mono">workspace:*</span></span
+              >
+              <span class="tag"
+                >compiled per-app, no build step of its own</span
+              >
+            </div>
+            <span class="rule"></span>
+          </div>
+
+          <!-- packages -->
+          <div class="layer l-pkg">
+            <div class="layer-tag">
+              <span class="dot"></span
+              ><span class="eyebrow">Shared packages · packages/*</span>
+              <span class="note">source-only, published nowhere</span>
+            </div>
+            <div class="cols">
+              <div class="box">
+                <div class="hd"><h3>@glowroot/data</h3></div>
+                <div class="sub">
+                  The only door to data. ~24 async accessors —
+                  <code>getProducts</code>, <code>getOrders</code>,
+                  <code>getOrdersByEmail</code>, <code>addOrder</code>,
+                  <code>verifyUser</code>, <code>getDashboardStats</code>. Apps
+                  never touch the raw arrays.
+                </div>
+                <div class="chips">
+                  <span class="chip">node runtime only</span
+                  ><span class="chip k"
+                    >./serviceability →&nbsp;client-safe</span
+                  >
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>@glowroot/types</h3></div>
+                <div class="sub">
+                  The contract both apps compile against: <code>Product</code>,
+                  <code>Material</code>, <code>Order</code>,
+                  <code>Payment</code>, <code>Plan</code>, <code>User</code>.
+                  <code>PublicUser</code> is <code>User</code> with the password
+                  hash removed.
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>@glowroot/ui</h3></div>
+                <div class="sub">
+                  Presentational primitives shared by both apps:
+                  <code>Button</code>, <code>Badge</code>, <code>Card</code>,
+                  <code>Eyebrow</code>, <code>StatsBand</code>,
+                  <code>ProductCard</code>, icons.
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>@glowroot/utils</h3></div>
+                <div class="sub">
+                  ₹ formatting, <code>slugify</code>, <code>humanize</code>,
+                  <code>formatDate</code>, the <code>BOTTLE_ML</code> constant.
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>@glowroot/config</h3></div>
+                <div class="sub">
+                  Tailwind preset (design tokens) and
+                  <code>tsconfig.base.json</code>. Config only — no runtime
+                  code.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="gutter">
+            <span class="rule"></span>
+            <div class="tags">
+              <span class="tag"
+                >node <span class="mono">fs</span> read / write · never imported
+                by a client component</span
+              >
+              <span class="tag"
+                >path resolved by walking up to
+                <span class="mono">pnpm-workspace.yaml</span></span
+              >
+            </div>
+            <span class="rule"></span>
+          </div>
+
+          <!-- persistence -->
+          <div class="layer l-store">
+            <div class="layer-tag">
+              <span class="dot"></span
+              ><span class="eyebrow">Persistence · repo root</span>
+              <span class="note"
+                >the shared ground between the two processes</span
+              >
+            </div>
+            <div class="cols">
+              <div class="box">
+                <div class="hd"><h3>.glowroot-orders.json</h3></div>
+                <div class="sub">
+                  Read-modify-write on every change. Storefront appends at
+                  checkout, admin flips status and appends to
+                  <code>history</code>. Seeded from <code>orders.ts</code> on
+                  first run.
+                </div>
+                <div class="chips">
+                  <span class="chip k">storefront: append</span
+                  ><span class="chip k">admin: read + update</span>
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>.glowroot-users.json</h3></div>
+                <div class="sub">
+                  Accounts keyed by lowercased email — the same key orders
+                  carry, so identity needs no join. Passwords stored as salted
+                  PBKDF2-SHA256, 120k iterations.
+                </div>
+                <div class="chips">
+                  <span class="chip k">storefront only</span>
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>.glowroot-zones.json</h3></div>
+                <div class="sub">
+                  The delivery map: one record per pincode (area, city, lead
+                  time, COD, paused) plus the nationwide switch. Admin
+                  <em>Locations</em> writes it; the storefront reads it on every
+                  page load for the serviceability hint and the hard checkout
+                  check.
+                </div>
+                <div class="chips">
+                  <span class="chip k">admin: write</span
+                  ><span class="chip k">storefront: read</span>
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>.glowroot-partners.json</h3></div>
+                <div class="sub">
+                  The delivery roster — vehicle, covered pincodes, capacity per
+                  slot, duty status. Orders point at it through
+                  <code>partnerId</code>; the customer's tracking page names
+                  whoever is carrying theirs.
+                </div>
+                <div class="chips">
+                  <span class="chip k">admin: write</span
+                  ><span class="chip k">storefront: read</span>
+                </div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>In-module seed data</h3></div>
+                <div class="sub">
+                  Catalogue that no one edits at runtime, so it stays in
+                  TypeScript: products (with a per-product material
+                  <em>recipe</em>), materials, produce, combos, bundles, plans,
+                  and the seed delivery map the zone store starts from.
+                </div>
+                <div class="chips"><span class="chip">read-only</span></div>
+              </div>
+              <div class="box">
+                <div class="hd"><h3>Mock payment gateway</h3></div>
+                <div class="sub">
+                  A local <code>charge()</code> inside the checkout action:
+                  validates the instrument, sleeps 900&nbsp;ms so the
+                  "contacting your bank" state is real, returns a
+                  <code>Payment</code> already shaped for a live provider.
+                </div>
+                <div class="chips">
+                  <span class="chip">no network call</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ORDER PATH ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 2</span>
+          <h2>The order path</h2>
+          <p>
+            The one flow that crosses every layer, in the order it actually
+            runs. Steps 1–4 can all abort before anything is written to disk.
+          </p>
+        </div>
+
+        <ol class="flow">
+          <li class="gate">
+            <span class="what">Account gate</span>
+            <span class="where"
+              ><code>isRegisteredUser(email)</code> — the action is a public
+              endpoint, so this holds even if the UI is bypassed. It proves the
+              email <em>has</em> an account, not that the caller is that
+              person.</span
+            >
+          </li>
+          <li class="gate">
+            <span class="what">Hard serviceability check</span>
+            <span class="where"
+              ><code>isServiceable(pincode)</code> — the same predicate the
+              header banner uses as a soft hint while browsing. Currently
+              short-circuited by <code>acceptAllPincodes = true</code>.</span
+            >
+          </li>
+          <li>
+            <span class="what">Price the order</span>
+            <span class="where"
+              >One-time: sum of <code>qty × priceINR</code>. Subscription: the
+              plan's <code>pricing[cycle]</code> price, with items left
+              un-itemised.</span
+            >
+          </li>
+          <li>
+            <span class="what">Charge</span>
+            <span class="where"
+              ><code>charge()</code> runs <em>before</em> any write, so a
+              decline leaves nothing behind. Cash on delivery returns
+              <code>pending</code> rather than <code>paid</code>; card and UPI
+              keep only a masked hint.</span
+            >
+          </li>
+          <li>
+            <span class="what">Persist the order</span>
+            <span class="where"
+              ><code>addOrder</code> → <code>appendOrder</code> unshifts onto
+              <code>.glowroot-orders.json</code>. Status opens at
+              <code>confirmed</code> when paid, <code>pending</code> for COD,
+              with the first <code>history</code> event stamped.</span
+            >
+          </li>
+          <li>
+            <span class="what">Remember the customer</span>
+            <span class="where"
+              ><code>saveCustomerProfile</code> upserts name, phone, address and
+              pincode into <code>.glowroot-users.json</code> — so the next
+              checkout prefills, and a guest can claim their history later by
+              signing up with the same email.</span
+            >
+          </li>
+          <li>
+            <span class="what">Admin picks it up</span>
+            <span class="where"
+              >The order appears on <code>:3001</code> on next render.
+              <code>changeStatus</code> appends to <code>history</code> and
+              revalidates <code>/orders</code>, <code>/orders/[id]</code> and
+              <code>/</code>.</span
+            >
+          </li>
+          <li>
+            <span class="what">Customer reads it back</span>
+            <span class="where"
+              ><code>/account/orders</code> for signed-in customers,
+              <code>/track</code> for guests — which requires order ID
+              <em>and</em> the email it was placed with, since an ID alone is
+              guessable.</span
+            >
+          </li>
+        </ol>
+      </section>
+
+      <!-- ============ STATE ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 3</span>
+          <h2>Where state lives</h2>
+          <p>
+            There is no session store and no cache tier. Every piece of state is
+            either in the customer's browser or in a file.
+          </p>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>State</th>
+                <th>Home</th>
+                <th>Written by</th>
+                <th>Survives</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Cart</b></td>
+                <td class="mono">localStorage · glowroot.cart</td>
+                <td>StoreProvider</td>
+                <td>Reload, not another device</td>
+              </tr>
+              <tr>
+                <td><b>Pincode</b></td>
+                <td class="mono">localStorage · glowroot.pincode</td>
+                <td>StoreProvider</td>
+                <td>Reload, not another device</td>
+              </tr>
+              <tr>
+                <td><b>Session</b></td>
+                <td class="mono">localStorage · glowroot.session</td>
+                <td>AuthProvider</td>
+                <td>Reload; no server-side counterpart</td>
+              </tr>
+              <tr>
+                <td><b>Orders</b></td>
+                <td class="mono">.glowroot-orders.json</td>
+                <td>Both apps, via <span class="mono">@glowroot/data</span></td>
+                <td>Restart; shared across both processes</td>
+              </tr>
+              <tr>
+                <td><b>Accounts</b></td>
+                <td class="mono">.glowroot-users.json</td>
+                <td>Storefront only</td>
+                <td>Restart</td>
+              </tr>
+              <tr>
+                <td><b>Delivery map</b></td>
+                <td class="mono">.glowroot-zones.json</td>
+                <td>Admin writes, both apps read</td>
+                <td>Restart; shared across both processes</td>
+              </tr>
+              <tr>
+                <td><b>Delivery partners</b></td>
+                <td class="mono">.glowroot-partners.json</td>
+                <td>Admin writes, both apps read</td>
+                <td>Restart; shared across both processes</td>
+              </tr>
+              <tr>
+                <td><b>Catalogue &amp; stock</b></td>
+                <td class="mono">packages/data/src/*.ts</td>
+                <td>Nobody at runtime</td>
+                <td>Forever — it's source</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ SEAMS ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 4</span>
+          <h2>The swap seams</h2>
+          <p>
+            Each of these is a single function body standing in for
+            infrastructure. Replacing one shouldn't touch its callers — that's
+            the design intent, and mostly it holds.
+          </p>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Stands in for</th>
+                <th>Today</th>
+                <th>Lives in</th>
+                <th>Callers change?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Database</b></td>
+                <td>JSON read-modify-write</td>
+                <td class="mono">data/src/store.ts · users.ts</td>
+                <td>No — accessors are already async</td>
+              </tr>
+              <tr>
+                <td><b>Auth provider</b></td>
+                <td>PBKDF2 compare, no session</td>
+                <td class="mono">login/actions.ts · data/src/users.ts</td>
+                <td>No for sign-in; yes for identity <em>(below)</em></td>
+              </tr>
+              <tr>
+                <td><b>Payment gateway</b></td>
+                <td>Local <span class="mono">charge()</span>, 900 ms sleep</td>
+                <td class="mono">checkout/actions.ts</td>
+                <td>
+                  No — returns a real <span class="mono">Payment</span> shape
+                </td>
+              </tr>
+              <tr>
+                <td><b>Service-area API</b></td>
+                <td>Pincode allow-list + override flag</td>
+                <td class="mono">data/src/serviceability.ts</td>
+                <td>No</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ NOTES ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 5</span>
+          <h2>What the diagram implies</h2>
+          <p>
+            Consequences of the shape above that are worth stating outright, in
+            both directions.
+          </p>
+        </div>
+        <div class="notes">
+          <div class="note-card">
+            <span class="eyebrow">Trust boundary</span>
+            <h3>Email is supplied by the client</h3>
+            <p>
+              With the session in <code>localStorage</code> there is nothing
+              server-side to read an identity from, so
+              <code>fetchMyOrders(email)</code> and <code>placeOrder</code> take
+              the email as an argument. Anyone can call those actions with
+              someone else's address. <code>/track</code> is the exception — it
+              demands the order ID too.
+            </p>
+          </div>
+          <div class="note-card">
+            <span class="eyebrow">Concurrency</span>
+            <h3>Two writers, one file, no lock</h3>
+            <p>
+              Both processes do read → mutate → whole-file write. A storefront
+              checkout landing at the same moment as an admin status change can
+              lose one of the two. Fine for a prototype; it's the first thing a
+              real datastore fixes.
+            </p>
+          </div>
+          <div class="note-card">
+            <span class="eyebrow">Deployment</span>
+            <h3>Shared disk is a hard requirement</h3>
+            <p>
+              The two apps only agree because they resolve the same repo-root
+              path. Deploy them to separate hosts or a read-only filesystem and
+              they silently stop seeing each other's data.
+            </p>
+          </div>
+          <div class="note-card ok">
+            <span class="eyebrow">Holding up well</span>
+            <h3>The accessor boundary is real</h3>
+            <p>
+              No page imports a raw data array, and every accessor is already
+              async. The one deliberate exception —
+              <code>@glowroot/data/serviceability</code>, a pure predicate
+              imported by a client component — is a separate export precisely so
+              <code>fs</code> never follows it into the bundle.
+            </p>
+          </div>
+          <div class="note-card ok">
+            <span class="eyebrow">Holding up well</span>
+            <h3>Secrets don't cross the wire</h3>
+            <p>
+              <code>User</code> never leaves the server;
+              <code>toPublic()</code> strips the password hash before any record
+              reaches a client, and payment instruments are masked down to a
+              hint before being stored.
+            </p>
+          </div>
+          <div class="note-card ok">
+            <span class="eyebrow">Holding up well</span>
+            <h3>Orders map to inventory</h3>
+            <p>
+              Each <code>Product</code> carries a <code>recipe</code> of raw
+              <code>Material</code>s, so a bottle sold on the storefront is
+              traceable to the produce the admin tracks — the join that makes
+              the two apps one system rather than two.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <p>
+          Read from the source at
+          <span class="mono">apps/{storefront,admin}</span> and
+          <span class="mono">packages/*</span>. Orchestration is Turborepo —
+          <span class="mono">pnpm dev</span> runs both apps;
+          <span class="mono">build</span>, <span class="mono">lint</span> and
+          <span class="mono">typecheck</span> depend on upstream builds and are
+          cached. Companion specs live in
+          <span class="mono">docs/frontend.md</span>,
+          <span class="mono">docs/customer-journey.md</span> and
+          <span class="mono">docs/user-journey.md</span>.
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var button = document.getElementById("themeToggle");
+        var KEY = "glowroot.docs.theme";
+
+        function systemPrefersDark() {
+          return (
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches
+          );
+        }
+
+        function isDark() {
+          var explicit = root.getAttribute("data-theme");
+          if (explicit) return explicit === "dark";
+          return systemPrefersDark();
+        }
+
+        function paint() {
+          // The button offers the theme you'd switch *to*.
+          button.textContent = isDark() ? "Light" : "Dark";
+        }
+
+        try {
+          var saved = window.localStorage.getItem(KEY);
+          if (saved === "dark" || saved === "light")
+            root.setAttribute("data-theme", saved);
+        } catch (e) {
+          /* private mode — fall back to the OS preference */
+        }
+
+        paint();
+
+        button.addEventListener("click", function () {
+          var next = isDark() ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try {
+            window.localStorage.setItem(KEY, next);
+          } catch (e) {
+            /* ignore */
+          }
+          paint();
+        });
+
+        // Follow the OS while no explicit choice has been made.
+        if (window.matchMedia) {
+          window
+            .matchMedia("(prefers-color-scheme: dark)")
+            .addEventListener("change", function () {
+              if (!root.getAttribute("data-theme")) paint();
+            });
+        }
+      })();
+    </script>
+  </body>
+</html>

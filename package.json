@@ -1,0 +1,24 @@
+{
+  "name": "glowroot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GlowRoot — cold-pressed juice storefront + admin monorepo",
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "start": "turbo run start"
+  },
+  "devDependencies": {
+    "prettier": "3.9.8",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

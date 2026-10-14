@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GlowRoot — Combo menu (no prices) mockup</title>
+    <style>
+      :root {
+        /* GlowRoot brand tokens */
+        --leaf: #2f5d34;
+        --leaf-deep: #193d20;
+        --leaf-soft: #5a8a4a;
+        --carrot: #d9772e;
+        --cream: #f6f0e2;
+        --cream-2: #efe6d2;
+        --paper: #fbf8f0;
+        --ink: #243018;
+        --ink-soft: #5b6450;
+        --line: #e0d6bf;
+        --leaf-tint: rgba(90, 138, 74, 0.12);
+
+        --bg: var(--cream-2);
+        --fg: var(--ink);
+        --muted: var(--ink-soft);
+        --surface: var(--paper);
+        --surface-2: var(--cream);
+        --card-line: var(--line);
+
+        --display:
+          "Bricolage Grotesque", ui-sans-serif, "Segoe UI", system-ui,
+          sans-serif;
+        --body:
+          "Hanken Grotesque", ui-sans-serif, system-ui, -apple-system,
+          "Segoe UI", sans-serif;
+        --shadow: 0 30px 60px -34px rgba(40, 55, 25, 0.45);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #171c11;
+          --fg: #ece7d6;
+          --muted: #a9b09a;
+          --surface: #20281a;
+          --surface-2: #222b1b;
+          --card-line: #34402a;
+          --leaf-soft: #7fa869;
+          --carrot: #e6924e;
+          --shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6);
+        }
+      }
+      :root[data-theme="light"] {
+        --bg: var(--cream-2);
+        --fg: var(--ink);
+        --muted: var(--ink-soft);
+        --surface: var(--paper);
+        --surface-2: var(--cream);
+        --card-line: var(--line);
+        --leaf-soft: #5a8a4a;
+        --carrot: #d9772e;
+        --shadow: 0 30px 60px -34px rgba(40, 55, 25, 0.45);
+      }
+      :root[data-theme="dark"] {
+        --bg: #171c11;
+        --fg: #ece7d6;
+        --muted: #a9b09a;
+        --surface: #20281a;
+        --surface-2: #222b1b;
+        --card-line: #34402a;
+        --leaf-soft: #7fa869;
+        --carrot: #e6924e;
+        --shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: var(--body);
+        background: var(--bg);
+        color: var(--fg);
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.55;
+      }
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 40px 24px 96px;
+      }
+
+      /* preview-only banner explaining this is a mockup */
+      .note {
+        max-width: 1120px;
+        margin: 20px auto 0;
+        padding: 12px 18px;
+        border: 1px dashed var(--card-line);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--surface) 70%, transparent);
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .note b {
+        color: var(--fg);
+        font-weight: 700;
+      }
+      .note code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+      }
+
+      header.page {
+        margin-bottom: 40px;
+      }
+      .eyebrow {
+        font-family: var(--display);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--carrot);
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: clamp(30px, 5vw, 46px);
+        line-height: 1.05;
+        margin: 0 0 14px;
+        text-wrap: balance;
+        letter-spacing: -0.015em;
+      }
+      h1 .script {
+        font-style: italic;
+        color: var(--leaf);
+        font-weight: 700;
+      }
+      header.page p {
+        margin: 0;
+        max-width: 60ch;
+        color: var(--muted);
+        font-size: 16px;
+      }
+      header.page a {
+        color: var(--leaf-soft);
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      /* ---- signature combo band ---- */
+      .combo {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 0;
+        background: var(--surface);
+        border: 1px solid var(--card-line);
+        border-radius: 28px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        margin-bottom: 56px;
+      }
+      @media (max-width: 780px) {
+        .combo {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .combo-visual {
+        position: relative;
+        background:
+          radial-gradient(
+            120% 90% at 30% 20%,
+            rgba(90, 138, 74, 0.16),
+            transparent 60%
+          ),
+          var(--surface-2);
+        padding: 40px 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        min-height: 300px;
+      }
+      .combo-tag {
+        position: absolute;
+        top: 22px;
+        left: 22px;
+        background: var(--carrot);
+        color: #fff;
+        font-weight: 700;
+        font-size: 12.5px;
+        letter-spacing: 0.04em;
+        padding: 8px 15px;
+        border-radius: 999px;
+        box-shadow: 0 10px 22px -10px rgba(217, 119, 46, 0.8);
+      }
+      /* CSS bottles standing in for the real product photos */
+      .bottle {
+        width: 62px;
+        height: 170px;
+        border-radius: 16px 16px 20px 20px;
+        position: relative;
+        box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.5);
+        transform: translateY(0);
+        transition: transform 0.3s;
+      }
+      .bottle::before {
+        content: "";
+        position: absolute;
+        top: -14px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 22px;
+        height: 18px;
+        border-radius: 5px 5px 3px 3px;
+        background: color-mix(in srgb, var(--fg) 40%, #000 10%);
+        opacity: 0.6;
+      }
+      .bottle::after {
+        content: "";
+        position: absolute;
+        inset: 12px 10px;
+        border-radius: 10px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.35),
+          rgba(255, 255, 255, 0) 45%
+        );
+      }
+      .combo-visual:hover .bottle {
+        transform: translateY(-6px);
+      }
+      .combo-visual .bottle:nth-child(3) {
+        transition-delay: 0.04s;
+      }
+      .combo-visual .bottle:nth-child(4) {
+        transition-delay: 0.08s;
+      }
+
+      .combo-body {
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+      }
+      .combo-body .eyebrow {
+        margin-bottom: 8px;
+      }
+      .combo-body h2 {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: clamp(24px, 3vw, 32px);
+        margin: 0 0 12px;
+        letter-spacing: -0.01em;
+      }
+      .combo-body > p {
+        margin: 0 0 22px;
+        color: var(--muted);
+        font-size: 15.5px;
+        max-width: 44ch;
+      }
+
+      .includes {
+        list-style: none;
+        margin: 0 0 26px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+      }
+      .includes li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 15.5px;
+        font-weight: 600;
+      }
+      .swatch {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        flex: none;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
+      }
+      .includes small {
+        color: var(--muted);
+        font-weight: 400;
+      }
+
+      .combo-foot {
+        margin-top: auto;
+        padding-top: 22px;
+        border-top: 1px solid var(--card-line);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .count-pill {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--leaf);
+        background: var(--leaf-tint);
+        padding: 9px 16px;
+        border-radius: 999px;
+      }
+      .link-cta {
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--leaf-soft);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .link-cta:hover {
+        color: var(--leaf);
+        gap: 10px;
+      }
+
+      /* ---- section head for the juice grid ---- */
+      .grid-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+      }
+      .grid-head h3 {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: clamp(20px, 2.5vw, 26px);
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .grid-head span {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      /* ---- juice gallery grid ---- */
+      .menu {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--card-line);
+        border-radius: 20px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s,
+          border-color 0.2s;
+      }
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow);
+        border-color: var(--leaf-soft);
+      }
+      .thumb {
+        height: 148px;
+        border-radius: 14px;
+        margin-bottom: 12px;
+        display: grid;
+        place-items: center;
+        position: relative;
+        overflow: hidden;
+        background: var(--surface-2);
+      }
+      .thumb .bottle {
+        width: 46px;
+        height: 122px;
+      }
+      .kicker {
+        font-family: var(--display);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--carrot);
+      }
+      .card h4 {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 19px;
+        margin: 2px 0 0;
+      }
+      .card p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13.5px;
+        line-height: 1.5;
+      }
+      .ingredients {
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .ingredients span {
+        font-size: 11.5px;
+        color: var(--fg);
+        background: var(--surface-2);
+        border: 1px solid var(--card-line);
+        padding: 3px 9px;
+        border-radius: 999px;
+      }
+      .add-btn {
+        margin-top: 14px;
+        width: 100%;
+        cursor: pointer;
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 14px;
+        color: #fff;
+        background: var(--leaf);
+        border: none;
+        padding: 11px 14px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition:
+          transform 0.15s,
+          background 0.15s,
+          opacity 0.15s;
+      }
+      .add-btn:hover {
+        background: var(--leaf-deep);
+      }
+      .add-btn:active {
+        transform: scale(0.97);
+      }
+      .add-btn[disabled] {
+        opacity: 0.45;
+        cursor: not-allowed;
+        background: var(--muted);
+      }
+      .add-btn .plus {
+        font-size: 17px;
+        line-height: 1;
+      }
+
+      .theme-toggle {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 10;
+        font-family: var(--body);
+        font-size: 13px;
+        font-weight: 600;
+        background: var(--surface);
+        color: var(--fg);
+        border: 1px solid var(--card-line);
+        padding: 8px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      .theme-toggle:focus-visible {
+        outline: 2px solid var(--leaf-soft);
+        outline-offset: 2px;
+      }
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--leaf-soft);
+        outline-offset: 2px;
+        border-radius: 6px;
+      }
+
+      /* ---- floating cart bar (CartIsland) — pinned bottom-right on every page ---- */
+      .cart-island {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 40;
+        width: min(30rem, calc(100vw - 2.5rem));
+        background: var(--leaf);
+        color: #fff;
+        border-radius: 2rem;
+        padding: 12px;
+        box-shadow: 0 18px 50px -12px rgba(25, 40, 18, 0.5);
+        font-family: var(--body);
+      }
+      @media (max-width: 640px) {
+        .cart-island {
+          right: 12px;
+          left: 12px;
+          width: auto;
+        }
+      }
+      .ci-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .ci-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .ci-bag {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      /* the combo frames that fill with colour as products are added (3 or 6) */
+      .ci-frames {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .frame {
+        position: relative;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        flex: none;
+        display: grid;
+        place-items: center;
+        border: 2px dashed rgba(255, 255, 255, 0.4);
+        color: rgba(255, 255, 255, 0.6);
+        font-weight: 700;
+        font-size: 15px;
+        background: rgba(255, 255, 255, 0.06);
+        transition:
+          transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+          border-color 0.2s,
+          background 0.2s;
+      }
+      .frame.filled {
+        border-style: solid;
+        border-color: rgba(255, 255, 255, 0.85);
+        color: #fff;
+        box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.5);
+        transform: scale(1.06);
+      }
+      .frame.filled .glyph {
+        width: 22px;
+        height: 22px;
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+      }
+      .frame .slot-num {
+        opacity: 0.8;
+      }
+      .ci-meta {
+        margin-left: 6px;
+        min-width: 0;
+      }
+      .ci-picks {
+        display: block;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      /* horizontal row of named product chips — the clear "what's in the combo" list */
+      .ci-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .ci-chips:empty {
+        display: none;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        border-radius: 999px;
+        padding: 6px 6px 6px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .chip .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex: none;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+      }
+      .chip .x {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.22);
+        color: #fff;
+        font-weight: 800;
+        font-size: 13px;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        flex: none;
+        transition: background 0.15s;
+      }
+      .chip .x:hover {
+        background: rgba(255, 255, 255, 0.4);
+      }
+
+      /* a card whose juice is in the combo */
+      .card.added {
+        border-color: var(--leaf-soft);
+        box-shadow: 0 0 0 2px var(--leaf-tint);
+      }
+      .card.added .thumb::after {
+        content: "\2713";
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--leaf);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 800;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.4);
+      }
+      .add-btn.added {
+        background: var(--leaf-soft);
+      }
+      .add-btn.added:hover {
+        background: #a3253f;
+      }
+
+      /* box-size selector — pick a Sampler (3) or Sharing (6) box to fill */
+      .box-switch {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 0 0 30px;
+      }
+      .box-opt {
+        flex: 1 1 240px;
+        cursor: pointer;
+        text-align: left;
+        background: var(--surface);
+        border: 1.5px solid var(--card-line);
+        border-radius: 18px;
+        padding: 16px 18px;
+        color: var(--fg);
+        font-family: var(--body);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.15s;
+      }
+      .box-opt:hover {
+        border-color: var(--leaf-soft);
+        transform: translateY(-2px);
+      }
+      .box-opt.active {
+        border-color: var(--leaf);
+        background: var(--leaf-tint);
+      }
+      .box-radio {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        flex: none;
+        border: 2px solid var(--card-line);
+        display: grid;
+        place-items: center;
+        transition: border-color 0.15s;
+      }
+      .box-opt.active .box-radio {
+        border-color: var(--leaf);
+      }
+      .box-opt.active .box-radio::after {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--leaf);
+      }
+      .box-opt .bo-name {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 17px;
+      }
+      .box-opt .bo-sub {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .ci-meta b {
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .ci-meta small {
+        display: block;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.65);
+      }
+      .ci-total {
+        text-align: right;
+      }
+      .ci-total b {
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .ci-total small {
+        display: block;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.65);
+      }
+      .ci-checkout {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--carrot);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        border-radius: 999px;
+        padding: 12px 20px;
+        font-family: var(--body);
+        font-size: 15px;
+        font-weight: 700;
+        width: 100%;
+      }
+      .ci-checkout:active {
+        transform: scale(0.98);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <button
+      class="theme-toggle"
+      id="tt"
+      type="button"
+      aria-label="Toggle light or dark theme"
+    >
+      ◐ Theme
+    </button>
+
+    <div class="note">
+      <b>Mockup preview.</b> This is the new browse-only combo menu —
+      <b>no prices, no cart buttons</b>, just the products. Bottles are drawn in
+      CSS placeholders here; the live page uses the real product photos from
+      <code>/assets</code>. Nothing in the app has been changed yet.
+    </div>
+
+    <div class="wrap">
+      <header class="page">
+        <p class="eyebrow">Combos &amp; gifting · one-time</p>
+        <h1>
+          What's in the box, <span class="script">before you decide</span>
+        </h1>
+        <p>
+          Browse everything that goes into a GlowRoot combo — every cold-pressed
+          blend, what's in it, and why it's in there. No numbers to distract
+          you. When you're ready, <a href="#">build your box →</a>
+        </p>
+      </header>
+
+      <!-- signature combo band -->
+      <section class="combo" aria-label="Nature's Palette combo">
+        <div class="combo-visual">
+          <span class="combo-tag">The signature trio</span>
+          <span
+            class="bottle"
+            style="background: linear-gradient(160deg, #b83350, #7c1a30)"
+          ></span>
+          <span
+            class="bottle"
+            style="background: linear-gradient(160deg, #82b24e, #4f7a2c)"
+          ></span>
+          <span
+            class="bottle"
+            style="background: linear-gradient(160deg, #f0c14e, #cf922a)"
+          ></span>
+        </div>
+        <div class="combo-body">
+          <p class="eyebrow">Nature's Palette Combo</p>
+          <h2>One of each colour, balanced across fruit &amp; veg</h2>
+          <p>
+            Three 100 ml cold-pressed bottles — the trio we'd hand a
+            first-timer. Here's exactly what's inside.
+          </p>
+          <ul class="includes">
+            <li>
+              <span class="swatch" style="background: #a3253f"></span>
+              Deep Roots <small>— grape · beetroot · apple</small>
+            </li>
+            <li>
+              <span class="swatch" style="background: #6fa03e"></span>
+              Green Roots <small>— kale · cucumber · green apple</small>
+            </li>
+            <li>
+              <span class="swatch" style="background: #e8b23f"></span>
+              Golden Glow <small>— mango · carrot · ginger</small>
+            </li>
+          </ul>
+          <div class="combo-foot">
+            <span class="count-pill">3 bottles · one-time</span>
+            <a class="link-cta" href="#">See the full combo →</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- build-your-own box: pick a size, then fill it -->
+      <div class="grid-head">
+        <h3>Build your own box</h3>
+        <span>Pick a size, then fill it with any juices — one flat price</span>
+      </div>
+      <div class="box-switch" id="boxSwitch"><!-- box options injected --></div>
+
+      <!-- juice gallery -->
+      <div class="grid-head">
+        <h3>Every juice on the menu</h3>
+        <span
+          >Cold-pressed the morning of delivery · no prices, just the
+          pours</span
+        >
+      </div>
+
+      <div class="menu" id="menu"><!-- cards injected --></div>
+    </div>
+
+    <!-- floating cart bar — the same CartIsland that sits on every storefront page.
+     Here it shows the three combo frames that fill as you add products. -->
+    <aside class="cart-island" aria-label="Your combo">
+      <!-- the frames row rebuilds to 3 or 6 slots depending on the chosen box -->
+      <div class="ci-frames" id="frames" aria-label="Combo slots"></div>
+
+      <div class="ci-top">
+        <div class="ci-meta">
+          <b id="ci-count">Build your combo</b>
+          <small class="ci-picks" id="ci-hint">Add 3 juices to fill it</small>
+        </div>
+        <div class="ci-total">
+          <b id="ci-price">₹450</b>
+          <small id="ci-sub">Sampler · 3 × 100 ml</small>
+        </div>
+      </div>
+
+      <!-- clear, horizontal list of the products added to the combo -->
+      <div
+        class="ci-chips"
+        id="chips"
+        aria-label="Products in your combo"
+      ></div>
+
+      <button
+        class="ci-checkout"
+        type="button"
+        id="ci-checkout"
+        disabled
+        style="opacity: 0.5; cursor: not-allowed"
+      >
+        <span id="ci-cta-label">Add 3 more to check out</span>
+        <svg
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="#fff"
+          stroke-width="2"
+        >
+          <path
+            d="M9 6l6 6-6 6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    </aside>
+
+    <script>
+      // Theme toggle — stamps data-theme so it overrides the media query both ways.
+      var root = document.documentElement;
+      document.getElementById("tt").addEventListener("click", function () {
+        var isDark =
+          root.getAttribute("data-theme") === "dark" ||
+          (!root.getAttribute("data-theme") &&
+            matchMedia("(prefers-color-scheme: dark)").matches);
+        root.setAttribute("data-theme", isDark ? "light" : "dark");
+      });
+
+      // The real juice menu (kind: "juice"), mirrored from packages/data/src/products.ts.
+      var juices = [
+        {
+          name: "Summer Crush",
+          kicker: "Bestseller",
+          color: "#d4533a",
+          ingredients: ["Watermelon", "Strawberry", "Lime", "Mint"],
+          desc: "Cool, juicy and just-sweet-enough — our signature summer pour.",
+        },
+        {
+          name: "Deep Roots",
+          kicker: "Antioxidant",
+          color: "#a3253f",
+          ingredients: ["Grape", "Beetroot", "Apple", "Mint"],
+          desc: "Bold, earthy and antioxidant-rich — the deepest purples from soil and vine.",
+        },
+        {
+          name: "Golden Glow",
+          kicker: "Immunity",
+          color: "#e8b23f",
+          ingredients: ["Mango", "Carrot", "Ginger", "Lime"],
+          desc: "Bright and tropical with a warm ginger kick — summer in a bottle.",
+        },
+        {
+          name: "Green Roots",
+          kicker: "Bestseller",
+          color: "#6fa03e",
+          ingredients: ["Kale", "Cucumber", "Green apple", "Lemon"],
+          desc: "Crisp, clean and refreshing — the everyday green that actually tastes good.",
+        },
+        {
+          name: "Melon Mint Cooler",
+          kicker: "Peak season",
+          color: "#5fa06a",
+          ingredients: ["Muskmelon", "Mint", "Lime"],
+          desc: "Feather-light and cooling — summer melon with a whisper of mint.",
+        },
+        {
+          name: "Litchi Rose",
+          kicker: "Limited",
+          color: "#d16a8f",
+          ingredients: ["Litchi", "Rose", "Lime"],
+          desc: "Delicate and floral — sweet litchi lifted with a rose finish.",
+        },
+        {
+          name: "Cane & Ginger",
+          kicker: "Energising",
+          color: "#c9902f",
+          ingredients: ["Sugarcane", "Ginger", "Lime"],
+          desc: "Raw sugarcane with a ginger bite — a proper roadside classic, cleaned up.",
+        },
+        {
+          name: "Beet Boost",
+          kicker: "Recovery",
+          color: "#9c2a5c",
+          ingredients: ["Beetroot", "Apple", "Carrot", "Lemon"],
+          desc: "Deep ruby and grounding — the post-workout pour.",
+        },
+        {
+          name: "Citrus Sunrise",
+          kicker: "Immunity",
+          color: "#e08a2e",
+          ingredients: ["Orange", "Carrot", "Ginger", "Lime"],
+          desc: "A bright citrus-and-carrot wake-up with a ginger edge.",
+        },
+        {
+          name: "Tropical Sunset",
+          kicker: "Peak season",
+          color: "#e26d4a",
+          ingredients: ["Pineapple", "Mango", "Passion fruit"],
+          desc: "Golden-hour sweetness — tropical fruit at full ripeness.",
+        },
+        {
+          name: "Garden Fresh",
+          kicker: "Everyday",
+          color: "#6f9e3a",
+          ingredients: ["Spinach", "Cucumber", "Celery", "Apple"],
+          desc: "Clean, green and gentle — a mellow daily leaf-and-cucumber press.",
+        },
+        {
+          name: "Berry Blast",
+          kicker: "Antioxidant",
+          color: "#7a4a8f",
+          ingredients: ["Strawberry", "Blueberry", "Pomegranate"],
+          desc: "Deep berries, tart and bright — antioxidants by the bottleful.",
+        },
+      ];
+
+      var menu = document.getElementById("menu");
+      juices.forEach(function (j, idx) {
+        var card = document.createElement("article");
+        card.className = "card";
+        var chips = j.ingredients
+          .map(function (i) {
+            return "<span>" + i + "</span>";
+          })
+          .join("");
+        card.innerHTML =
+          '<div class="thumb">' +
+          '<span class="bottle" style="background:linear-gradient(160deg,' +
+          j.color +
+          "," +
+          "color-mix(in srgb," +
+          j.color +
+          ' 70%, #000 30%))"></span>' +
+          "</div>" +
+          '<span class="kicker">' +
+          j.kicker +
+          "</span>" +
+          "<h4>" +
+          j.name +
+          "</h4>" +
+          "<p>" +
+          j.desc +
+          "</p>" +
+          '<div class="ingredients">' +
+          chips +
+          "</div>" +
+          '<button class="add-btn" type="button" data-idx="' +
+          idx +
+          '">' +
+          '<span class="plus">+</span> Add to box</button>';
+        menu.appendChild(card);
+      });
+
+      // ---- build-your-own box: the frames fill as products are added ----
+      // Two standard sizes; every bottle is BOTTLE_ML (100 ml), matching the app.
+      var BOTTLE_ML = 100;
+      var BOXES = [
+        { key: "sampler", name: "Sampler Box", size: 3, price: 450 },
+        { key: "sharing", name: "Sharing Box", size: 6, price: 840 },
+      ];
+      var boxIdx = 0; // which box is being filled
+      var picks = []; // ordered list of chosen juice indices (unique)
+
+      function box() {
+        return BOXES[boxIdx];
+      }
+
+      var framesWrap = document.getElementById("frames");
+      var frameEls = []; // rebuilt by buildFrames()
+      var chipsEl = document.getElementById("chips");
+      var countEl = document.getElementById("ci-count");
+      var hintEl = document.getElementById("ci-hint");
+      var priceEl = document.getElementById("ci-price");
+      var subEl = document.getElementById("ci-sub");
+      var checkoutEl = document.getElementById("ci-checkout");
+      var ctaLabel = document.getElementById("ci-cta-label");
+      var switchEl = document.getElementById("boxSwitch");
+      var addButtons = Array.prototype.slice.call(
+        document.querySelectorAll(".add-btn"),
+      );
+
+      // Rebuild the frame row to match the current box size (3 or 6).
+      function buildFrames() {
+        var html = "";
+        for (var i = 0; i < box().size; i++) {
+          html +=
+            '<div class="frame" data-slot="' +
+            i +
+            '"><span class="slot-num">' +
+            (i + 1) +
+            "</span></div>";
+        }
+        framesWrap.innerHTML = html;
+        frameEls = Array.prototype.slice.call(
+          framesWrap.querySelectorAll(".frame"),
+        );
+      }
+
+      // The two box-size options.
+      function buildSwitch() {
+        switchEl.innerHTML = BOXES.map(function (b, i) {
+          return (
+            '<button class="box-opt' +
+            (i === boxIdx ? " active" : "") +
+            '" type="button" data-box="' +
+            i +
+            '">' +
+            '<span class="box-radio"></span>' +
+            '<span><span class="bo-name">' +
+            b.name +
+            "</span>" +
+            '<span class="bo-sub">' +
+            b.size +
+            " × " +
+            BOTTLE_ML +
+            " ml bottles · fill with any juices</span></span>" +
+            "</button>"
+          );
+        }).join("");
+      }
+
+      function selectBox(i) {
+        if (i === boxIdx) return;
+        boxIdx = i;
+        if (picks.length > box().size) picks = picks.slice(0, box().size); // trim overflow
+        buildFrames();
+        buildSwitch();
+        render();
+      }
+
+      switchEl.addEventListener("click", function (e) {
+        var opt = e.target.closest(".box-opt");
+        if (opt) selectBox(+opt.dataset.box);
+      });
+
+      // A tiny bottle glyph dropped into a filled frame.
+      function glyph() {
+        return (
+          '<svg class="glyph" viewBox="0 0 24 24" fill="#ffffff" ' +
+          'stroke="rgba(0,0,0,.25)" stroke-width="1">' +
+          '<path d="M9 2h6v3l1 2v13a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V7l1-2z"/></svg>'
+        );
+      }
+
+      function render() {
+        // frames — pure visual fill (colour + bottle), name in a tooltip
+        frameEls.forEach(function (el, i) {
+          var idx = picks[i];
+          if (idx !== undefined) {
+            var j = juices[idx];
+            el.classList.add("filled");
+            el.style.background =
+              "linear-gradient(160deg," +
+              j.color +
+              "," +
+              "color-mix(in srgb," +
+              j.color +
+              " 70%, #000 25%))";
+            el.innerHTML = glyph();
+            el.setAttribute("title", j.name);
+          } else {
+            el.classList.remove("filled");
+            el.style.background = "";
+            el.innerHTML = '<span class="slot-num">' + (i + 1) + "</span>";
+            el.setAttribute("title", "Empty slot " + (i + 1));
+          }
+        });
+
+        // chips — the clear, horizontal, named list with a remove × on each
+        chipsEl.innerHTML = picks
+          .map(function (idx) {
+            var j = juices[idx];
+            return (
+              '<span class="chip">' +
+              '<span class="dot" style="background:' +
+              j.color +
+              '"></span>' +
+              j.name +
+              '<button class="x" type="button" data-idx="' +
+              idx +
+              '" ' +
+              'aria-label="Remove ' +
+              j.name +
+              '">×</button>' +
+              "</span>"
+            );
+          })
+          .join("");
+
+        var n = picks.length;
+        var size = box().size;
+        var full = n === size;
+        var remaining = size - n;
+
+        countEl.textContent = full
+          ? box().name + " ready"
+          : n === 0
+            ? "Build your " + box().name
+            : n + " of " + size + " added";
+        hintEl.textContent = full
+          ? "Tap × to swap a juice"
+          : "Add " +
+            remaining +
+            " more " +
+            (remaining === 1 ? "juice" : "juices");
+        priceEl.textContent = "₹" + box().price;
+        subEl.textContent =
+          box().name.replace(" Box", "") +
+          " · " +
+          size +
+          " × " +
+          BOTTLE_ML +
+          " ml";
+        ctaLabel.textContent = full
+          ? "Checkout"
+          : "Add " + remaining + " more to check out";
+        checkoutEl.disabled = !full;
+        checkoutEl.style.opacity = full ? "1" : ".5";
+        checkoutEl.style.cursor = full ? "pointer" : "not-allowed";
+
+        // Reflect selection on each product card: added ✓, and toggle button label.
+        addButtons.forEach(function (b) {
+          var idx = +b.dataset.idx;
+          var isIn = picks.indexOf(idx) !== -1;
+          var card = b.closest(".card");
+          card.classList.toggle("added", isIn);
+          b.classList.toggle("added", isIn);
+          b.disabled = !isIn && full; // can't add once full, can always remove
+          b.innerHTML = isIn
+            ? "✓ Added · tap to remove"
+            : '<span class="plus">+</span> Add to box';
+        });
+      }
+
+      function toggle(idx) {
+        var at = picks.indexOf(idx);
+        if (at !== -1)
+          picks.splice(at, 1); // deselect
+        else if (picks.length < box().size) picks.push(idx); // select
+        render();
+      }
+
+      addButtons.forEach(function (b) {
+        b.addEventListener("click", function () {
+          toggle(+b.dataset.idx);
+        });
+      });
+
+      // The × on a product chip removes that juice from the combo.
+      chipsEl.addEventListener("click", function (e) {
+        var btn = e.target.closest(".x");
+        if (btn) toggle(+btn.dataset.idx);
+      });
+
+      buildFrames(); // draw the initial frame row for the default box (Sampler · 3)
+      buildSwitch(); // draw the box-size selector
+      render();
+    </script>
+  </body>
+</html>

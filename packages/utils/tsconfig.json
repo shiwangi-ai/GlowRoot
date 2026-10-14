@@ -1,0 +1,4 @@
+{
+  "extends": "@glowroot/config/tsconfig.base.json",
+  "include": ["src"]
+}

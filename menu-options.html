@@ -1,0 +1,535 @@
+<title>GlowRoot — Seasonal sub-link options</title>
+<style>
+  :root {
+    /* GlowRoot brand tokens (from docs/frontend.md) */
+    --leaf: #2f5d34;
+    --leaf-deep: #193d20;
+    --leaf-soft: #5a8a4a;
+    --carrot: #d9772e;
+    --cream: #f6f0e2;
+    --cream-2: #efe6d2;
+    --paper: #fbf8f0;
+    --ink: #243018;
+    --ink-soft: #5b6450;
+    --line: #e0d6bf;
+    --leaf-tint: rgba(90, 138, 74, 0.12);
+
+    /* page chrome */
+    --bg: #efe6d2;
+    --fg: #243018;
+    --muted: #5b6450;
+    --card-line: #e0d6bf;
+    --display: "Bricolage Grotesque", "Georgia", serif;
+    --body:
+      "Hanken Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1f14;
+      --fg: #ece7d6;
+      --muted: #a9b09a;
+      --card-line: #33402a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #efe6d2;
+    --fg: #243018;
+    --muted: #5b6450;
+    --card-line: #e0d6bf;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1f14;
+    --fg: #ece7d6;
+    --muted: #a9b09a;
+    --card-line: #33402a;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: var(--body);
+    background: var(--bg);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  header.page {
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--carrot);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.1;
+    margin: 0 0 12px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  header.page p {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--muted);
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+
+  .grid {
+    display: grid;
+    gap: 28px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 720px) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .option {
+    border: 1px solid var(--card-line);
+    border-radius: 18px;
+    padding: 22px;
+    background: color-mix(in srgb, var(--bg) 88%, #fff 12%);
+  }
+  @media (prefers-color-scheme: dark) {
+    .option {
+      background: color-mix(in srgb, var(--bg) 82%, #fff 6%);
+    }
+  }
+  .option-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .option-num {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--carrot);
+    font-variant-numeric: tabular-nums;
+  }
+  .option-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 18px;
+    margin: 0;
+  }
+  .option-note {
+    margin: 6px 0 18px;
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ---- faithful mega-menu panel ---- */
+  .panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+    width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 24px 50px -24px rgba(25, 40, 18, 0.45);
+    color: var(--ink);
+    font-family: var(--body);
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lead {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .lead:hover {
+    background: var(--leaf-tint);
+  }
+  .lead .t {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .lead:hover .t {
+    color: var(--leaf);
+  }
+  .lead .d {
+    display: block;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-top: 1px;
+  }
+
+  /* Option 1 — icon chips */
+  .chips {
+    display: flex;
+    gap: 8px;
+    padding: 6px 8px 4px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px 7px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--cream);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    transition:
+      border-color 0.15s,
+      background 0.15s,
+      color 0.15s;
+  }
+  .chip:hover {
+    background: var(--leaf-tint);
+    border-color: var(--leaf-soft);
+    color: var(--leaf);
+  }
+  .chip .ic {
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  /* Option 2 — icon + desc rows */
+  .row {
+    display: flex;
+    gap: 11px;
+    align-items: flex-start;
+    padding: 9px 12px;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .row:hover {
+    background: var(--leaf-tint);
+  }
+  .row .badge {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 17px;
+    background: var(--cream-2);
+    border: 1px solid var(--line);
+  }
+  .row .rt {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .row:hover .rt {
+    color: var(--leaf);
+  }
+  .row .rd {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 1px;
+  }
+
+  /* Option 3 — tree connector */
+  .tree {
+    position: relative;
+    margin: 2px 0 0 20px;
+    padding-left: 18px;
+  }
+  .tree::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -2px;
+    bottom: 16px;
+    width: 2px;
+    background: var(--line);
+  }
+  .branch {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    transition:
+      background 0.15s,
+      color 0.15s;
+  }
+  .branch::before {
+    content: "";
+    position: absolute;
+    left: -18px;
+    top: 50%;
+    width: 14px;
+    height: 2px;
+    background: var(--line);
+  }
+  .branch:hover {
+    background: var(--leaf-tint);
+    color: var(--leaf);
+  }
+  .branch .ic {
+    font-size: 15px;
+  }
+
+  /* right reference column (identical across all) */
+  .ref .lead {
+  }
+  .col-label {
+    font-family: var(--display);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    padding: 2px 12px 8px;
+    opacity: 0.7;
+  }
+
+  .fine {
+    margin-top: 30px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .fine code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    background: color-mix(in srgb, var(--bg) 70%, #000 8%);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+</style>
+
+<div class="wrap">
+  <header class="page">
+    <p class="eyebrow">GlowRoot · Shop mega-menu</p>
+    <h1>Three ways to style the Seasonal sub-links</h1>
+    <p>
+      Each panel below is the real menu, rendered in GlowRoot's brand tokens.
+      Only the <strong>left column</strong> changes — Fruits &amp; Vegetables
+      under Seasonal. The right column (Our juices / New / Combos) stays fixed
+      so you can compare like-for-like.
+    </p>
+  </header>
+
+  <div class="grid">
+    <!-- OPTION 1 — ICON CHIPS -->
+    <section class="option">
+      <div class="option-head">
+        <span class="option-num">01</span>
+        <h2 class="option-title">Icon chips</h2>
+      </div>
+      <p class="option-note">
+        Two compact pills side by side. Tidy, modern, removes the dead vertical
+        space.
+      </p>
+      <div class="panel">
+        <div class="col">
+          <a class="lead" href="#">
+            <span class="t">Seasonal</span>
+            <span class="d">Fruits &amp; vegetables at their peak</span>
+          </a>
+          <div class="chips">
+            <a class="chip" href="#"><span class="ic">🍊</span>Fruits</a>
+            <a class="chip" href="#"><span class="ic">🥕</span>Vegetables</a>
+          </div>
+        </div>
+        <div class="col ref">
+          <a class="lead" href="#"
+            ><span class="t">Our juices</span
+            ><span class="d">The full cold-pressed range</span></a
+          >
+          <a class="lead" href="#"
+            ><span class="t">New</span
+            ><span class="d">Latest arrivals &amp; smoothies</span></a
+          >
+          <a class="lead" href="#"
+            ><span class="t">Combos</span
+            ><span class="d">Boxes &amp; gifting sets</span></a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- OPTION 2 — ICON + DESC ROWS -->
+    <section class="option">
+      <div class="option-head">
+        <span class="option-num">02</span>
+        <h2 class="option-title">Icon + description rows</h2>
+      </div>
+      <p class="option-note">
+        Each gets an icon tile, label, and one-line description — mirrors the
+        right column exactly for full symmetry.
+      </p>
+      <div class="panel">
+        <div class="col">
+          <a class="lead" href="#">
+            <span class="t">Seasonal</span>
+            <span class="d">Fruits &amp; vegetables at their peak</span>
+          </a>
+          <a class="row" href="#">
+            <span class="badge">🍊</span>
+            <span
+              ><span class="rt">Fruits</span
+              ><span class="rd">Sweet single-fruit presses</span></span
+            >
+          </a>
+          <a class="row" href="#">
+            <span class="badge">🥕</span>
+            <span
+              ><span class="rt">Vegetables</span
+              ><span class="rd">Earthy blends &amp; single-veg</span></span
+            >
+          </a>
+        </div>
+        <div class="col ref">
+          <a class="lead" href="#"
+            ><span class="t">Our juices</span
+            ><span class="d">The full cold-pressed range</span></a
+          >
+          <a class="lead" href="#"
+            ><span class="t">New</span
+            ><span class="d">Latest arrivals &amp; smoothies</span></a
+          >
+          <a class="lead" href="#"
+            ><span class="t">Combos</span
+            ><span class="d">Boxes &amp; gifting sets</span></a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- OPTION 3 — TREE CONNECTOR -->
+    <section class="option">
+      <div class="option-head">
+        <span class="option-num">03</span>
+        <h2 class="option-title">Tree connector</h2>
+      </div>
+      <p class="option-note">
+        A hairline guide branches Fruits/Vegetables off Seasonal. Clear
+        hierarchy, understated.
+      </p>
+      <div class="panel">
+        <div class="col">
+          <a class="lead" href="#">
+            <span class="t">Seasonal</span>
+            <span class="d">Fruits &amp; vegetables at their peak</span>
+          </a>
+          <div class="tree">
+            <a class="branch" href="#"><span class="ic">🍊</span>Fruits</a>
+            <a class="branch" href="#"><span class="ic">🥕</span>Vegetables</a>
+          </div>
+        </div>
+        <div class="col ref">
+          <a class="lead" href="#"
+            ><span class="t">Our juices</span
+            ><span class="d">The full cold-pressed range</span></a
+          >
+          <a class="lead" href="#"
+            ><span class="t">New</span
+            ><span class="d">Latest arrivals &amp; smoothies</span></a
+          >
+          <a class="lead" href="#"
+            ><span class="t">Combos</span
+            ><span class="d">Boxes &amp; gifting sets</span></a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- CURRENT (for reference) -->
+    <section class="option">
+      <div class="option-head">
+        <span class="option-num">00</span>
+        <h2 class="option-title">Current (what you have now)</h2>
+      </div>
+      <p class="option-note">
+        Plain indented links — the floaty version you're trying to improve.
+      </p>
+      <div class="panel">
+        <div class="col">
+          <a class="lead" href="#">
+            <span class="t">Seasonal</span>
+            <span class="d">Fruits &amp; vegetables at their peak</span>
+          </a>
+          <a class="lead" href="#" style="margin-left: 4px; padding: 8px 12px"
+            ><span
+              class="t"
+              style="
+                font-size: 13.5px;
+                font-weight: 500;
+                color: var(--ink-soft);
+              "
+              >Fruits</span
+            ></a
+          >
+          <a class="lead" href="#" style="margin-left: 4px; padding: 8px 12px"
+            ><span
+              class="t"
+              style="
+                font-size: 13.5px;
+                font-weight: 500;
+                color: var(--ink-soft);
+              "
+              >Vegetables</span
+            ></a
+          >
+        </div>
+        <div class="col ref">
+          <a class="lead" href="#"
+            ><span class="t">Our juices</span
+            ><span class="d">The full cold-pressed range</span></a
+          >
+          <a class="lead" href="#"
+            ><span class="t">New</span
+            ><span class="d">Latest arrivals &amp; smoothies</span></a
+          >
+          <a class="lead" href="#"
+            ><span class="t">Combos</span
+            ><span class="d">Boxes &amp; gifting sets</span></a
+          >
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p class="fine">
+    Emoji icons are placeholders — on the real site we can swap them for small
+    SVG or produce thumbnails. Fonts shown are system fallbacks; the live site
+    uses <code>Bricolage Grotesque</code> + <code>Hanken Grotesque</code>. Tell
+    me which number you want and I'll wire it into <code>SiteHeader.tsx</code>.
+  </p>
+</div>

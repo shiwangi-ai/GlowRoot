@@ -1,0 +1,260 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --cream: 246 240 226;
+    --cream-2: 239 230 210;
+    --paper: 251 248 240;
+    --ink: 36 48 24;
+    --ink-soft: 91 100 80;
+    --line: 224 214 191;
+    --leaf-text: 47 93 52;
+  }
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --cream: 18 27 21;
+    --cream-2: 34 47 37;
+    --paper: 26 38 30;
+    --ink: 242 241 229;
+    --ink-soft: 184 196 178;
+    --line: 65 82 65;
+    --leaf-text: 161 205 137;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply font-body bg-cream text-ink antialiased overflow-x-hidden;
+    line-height: 1.55;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-bold text-ink;
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@layer components {
+  /* Preserve the original logo artwork on a light backing in dark mode. */
+  html[data-theme="dark"] .theme-logo {
+    background: #fbf8f0;
+    border-radius: 8px;
+    padding: 4px;
+  }
+  /* Handwritten script accent used in headlines. */
+  .script {
+    @apply font-script font-bold text-carrot;
+  }
+  /* Section scroll offset so sticky header doesn't cover anchor targets. */
+  .anchor-offset {
+    scroll-margin-top: 104px;
+  }
+}
+
+@layer utilities {
+  /* Hide the horizontal scrollbar on the juice carousel track. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* --- Add-to-cart motion (ported from the checkout-code demo) --- */
+
+/* The juice bubble that bounces from a fixed start point into the
+   bottom-right cart island. Exact port of the demo's `.juice-bubble`:
+   left/top animate to the corner while transform adds the bouncy arc. */
+.fly-bubble {
+  position: fixed;
+  z-index: 60;
+  left: 18%;
+  top: 46%;
+  width: 5rem;
+  height: 5rem;
+  overflow: hidden;
+  border: 4px solid #fbf8f0;
+  border-radius: 9999px;
+  background: #f6f0e2;
+  box-shadow: 0 12px 35px rgba(25, 40, 18, 0.28);
+  pointer-events: none;
+  will-change: left, top, transform, opacity;
+  animation: bubble-to-cart 750ms cubic-bezier(0.22, 0.8, 0.3, 1) forwards;
+}
+.fly-bubble img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+@keyframes bubble-to-cart {
+  0% {
+    transform: translate(0, 0) scale(0.3);
+    opacity: 0;
+  }
+  18% {
+    transform: translate(0, -3rem) scale(1.16);
+    opacity: 1;
+  }
+  38% {
+    transform: translate(3rem, 1rem) scale(0.92);
+  }
+  58% {
+    transform: translate(6rem, -2rem) scale(1.05);
+  }
+  100% {
+    left: calc(100% - 6rem);
+    top: calc(100% - 6rem);
+    transform: scale(0.32);
+    opacity: 0.2;
+  }
+}
+
+@media (max-width: 640px) {
+  .fly-bubble {
+    left: 12%;
+  }
+}
+
+/* The cart bar springs when the item count goes up. Kept subtle + rotation-free
+   because it's a large element — a big scale/rotate reads as jank here. */
+.cart-bump {
+  will-change: transform;
+  animation: cart-bump 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cart-bump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.045);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* When the header cart button is tapped, the floating cart bar does a smooth
+   horizontal shake to draw the eye to it. Damped wiggle that settles softly. */
+.cart-shake {
+  will-change: transform;
+  animation: cart-shake 500ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes cart-shake {
+  0% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-9px);
+  }
+  30% {
+    transform: translateX(8px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(4px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* The header cart button pops when tapped. */
+.cart-pop {
+  will-change: transform;
+  animation: cart-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cart-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.86);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fly-bubble,
+  .cart-bump,
+  .cart-shake,
+  .cart-pop {
+    animation: none !important;
+  }
+}
+
+/* Seasonal harvest becomes a pressing, while the original photos stay intact. */
+.seasonal-card {
+  width: 100%;
+  align-self: start;
+}
+.seasonal-card-cta {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  border: 3px solid #faf7ee;
+  border-radius: 30px;
+  padding: 9px 15px;
+  background: #2f5d34;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 5px 20px #26371f26;
+  transform: translate(-50%, 5px);
+  opacity: 0;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+.seasonal-card:hover .seasonal-card-cta,
+.seasonal-card:focus-visible .seasonal-card-cta {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (hover: none) {
+  .seasonal-card-cta {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .seasonal-card-cta {
+    transition: none;
+  }
+}
+
+/* Keep the cart's existing arrival animation visible, without covering the
+   panel or allowing focus to escape to background checkout controls. */
+body[data-product-quick-view-open] #cart-anchor {
+  z-index: 51;
+  pointer-events: none;
+}
+body[data-product-quick-view-open] [data-cart-details] {
+  display: none;
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@glowroot/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "deploy": "prisma migrate deploy",
+    "studio": "prisma studio",
+    "typecheck": "tsc --noEmit",
+    "seed": "node prisma/seed.mts",
+    "invite": "node prisma/invite.mts",
+    "import:customers": "node --env-file=.env prisma/import-customers.mts"
+  },
+  "dependencies": {
+    "@glowroot/auth": "workspace:*",
+    "@prisma/client": "^6.14.0"
+  },
+  "devDependencies": {
+    "@glowroot/config": "workspace:*",
+    "@types/node": "^20.14.0",
+    "prisma": "^6.14.0",
+    "typescript": "^5.6.3"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mts"
+  }
+}

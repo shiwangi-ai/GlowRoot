@@ -1,0 +1,19 @@
+# Dependencies and generated output
+node_modules/
+.pnpm-store/
+.next/
+.turbo/
+out/
+build/
+dist/
+coverage/
+next-env.d.ts
+pnpm-lock.yaml
+
+# Runtime data and generated assets
+.glowroot-*.json
+.image-slots.state.json
+.thumbnail/
+artifacts/
+screenshots/
+uploads/

@@ -1,0 +1,122 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px 24px 130px;
+  background: rgb(25 40 18 / 42%);
+  backdrop-filter: blur(3px);
+}
+
+.panel {
+  width: min(960px, 100%);
+  max-height: calc(100dvh - 154px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #dadfcb;
+  border-radius: 28px;
+  background: #faf7ee;
+  box-shadow: 0 24px 90px rgb(25 40 18 / 24%);
+  animation: reveal 180ms ease-out;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 24px;
+  border-bottom: 1px solid #e3e5d7;
+  background: #faf7ee;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #dadfcb;
+  border-radius: 50%;
+  color: #23462e;
+}
+
+.close:hover {
+  background: #e8ecdd;
+}
+.close:focus-visible {
+  outline: 2px solid #23462e;
+  outline-offset: 2px;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 30px;
+  padding: 20px;
+}
+
+.image {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #f1ecd9;
+}
+
+:global(html[data-theme="dark"]) .panel,
+:global(html[data-theme="dark"]) .header {
+  background: rgb(var(--paper));
+  border-color: rgb(var(--line));
+}
+:global(html[data-theme="dark"]) .close {
+  color: rgb(var(--ink));
+  border-color: rgb(var(--line));
+}
+:global(html[data-theme="dark"]) .close:hover {
+  background: rgb(var(--cream-2));
+}
+:global(html[data-theme="dark"]) .close:focus-visible {
+  outline-color: rgb(var(--leaf-text));
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .overlay {
+    padding: 12px 12px 116px;
+  }
+  .panel {
+    max-height: calc(100dvh - 128px);
+    border-radius: 22px;
+  }
+  .header {
+    padding: 8px 18px;
+  }
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 18px;
+  }
+  .image {
+    aspect-ratio: 2 / 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}

@@ -1,0 +1,1424 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GlowRoot — Component Architecture</title>
+    <style>
+      /* ---------- reset ---------- */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+      }
+      h1,
+      h2,
+      h3,
+      p,
+      ol,
+      ul,
+      figure {
+        margin: 0;
+      }
+      ol,
+      ul {
+        padding: 0;
+      }
+      img,
+      svg {
+        max-width: 100%;
+        display: block;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+
+      /* Same token system as docs/architecture.html — these two are siblings. */
+      :root {
+        --paper: #f6f7f3;
+        --surface: #ffffff;
+        --surface-2: #edefe8;
+        --ink: #171b18;
+        --ink-2: #3d4540;
+        --muted: #6e7872;
+        --line: #d8dcd2;
+        --line-2: #bfc5b9;
+
+        --client: #3f6070; /* slate — runs in the browser */
+        --app: #94285a; /* beet — server actions, route entry points */
+        --pkg: #3b6644; /* leaf — server-rendered */
+        --store: #8a5c0b; /* carrot — @glowroot/ui primitives */
+        --warn: #a03818;
+
+        --display:
+          "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua",
+          ui-serif, Georgia, serif;
+        --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --mono:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #101311;
+          --surface: #181c19;
+          --surface-2: #212622;
+          --ink: #edf0ea;
+          --ink-2: #c4cbc2;
+          --muted: #8d968c;
+          --line: #2c322d;
+          --line-2: #3d453e;
+
+          --client: #8fb4c6;
+          --app: #e58bb0;
+          --pkg: #8fc79c;
+          --store: #d9ac5a;
+          --warn: #e89372;
+        }
+      }
+
+      :root[data-theme="light"] {
+        --paper: #f6f7f3;
+        --surface: #ffffff;
+        --surface-2: #edefe8;
+        --ink: #171b18;
+        --ink-2: #3d4540;
+        --muted: #6e7872;
+        --line: #d8dcd2;
+        --line-2: #bfc5b9;
+        --client: #3f6070;
+        --app: #94285a;
+        --pkg: #3b6644;
+        --store: #8a5c0b;
+        --warn: #a03818;
+      }
+
+      :root[data-theme="dark"] {
+        --paper: #101311;
+        --surface: #181c19;
+        --surface-2: #212622;
+        --ink: #edf0ea;
+        --ink-2: #c4cbc2;
+        --muted: #8d968c;
+        --line: #2c322d;
+        --line-2: #3d453e;
+        --client: #8fb4c6;
+        --app: #e58bb0;
+        --pkg: #8fc79c;
+        --store: #d9ac5a;
+        --warn: #e89372;
+      }
+
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--body);
+        font-size: 1rem;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page {
+        max-width: 74rem;
+        margin: 0 auto;
+        padding: clamp(1.75rem, 4vw, 4rem) clamp(1.1rem, 4vw, 3rem) 5rem;
+        display: flex;
+        flex-direction: column;
+        gap: clamp(2.75rem, 5vw, 4.5rem);
+      }
+
+      /* ---------- type ---------- */
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        font-weight: 600;
+        text-wrap: balance;
+        line-height: 1.15;
+      }
+      h1 {
+        font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+        letter-spacing: -0.015em;
+      }
+      h2 {
+        font-size: clamp(1.4rem, 3vw, 1.85rem);
+        letter-spacing: -0.01em;
+      }
+      h3 {
+        font-size: 1.0625rem;
+        font-family: var(--body);
+        font-weight: 650;
+        letter-spacing: -0.005em;
+      }
+      p {
+        max-width: 66ch;
+      }
+      a {
+        color: inherit;
+        text-decoration-color: var(--line-2);
+        text-underline-offset: 2px;
+      }
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--app);
+        outline-offset: 3px;
+      }
+
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      code,
+      .mono {
+        font-family: var(--mono);
+        font-size: 0.8125em;
+      }
+      code {
+        color: var(--ink-2);
+      }
+
+      /* ---------- masthead ---------- */
+
+      .masthead {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .masthead p.lede {
+        font-size: 1.0625rem;
+        color: var(--ink-2);
+        max-width: 62ch;
+      }
+      .rule-top {
+        border-top: 2px solid var(--ink);
+        padding-top: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .rule-top .sibling {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        color: var(--muted);
+      }
+
+      .theme-toggle {
+        margin-left: auto;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        padding: 0.2rem 0.55rem;
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .theme-toggle:hover {
+        color: var(--ink);
+        border-color: var(--line-2);
+      }
+
+      .facts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+        gap: 1px;
+        background: var(--line);
+        border: 1px solid var(--line);
+        margin-top: 0.5rem;
+      }
+      .fact {
+        background: var(--surface);
+        padding: 0.8rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .fact b {
+        font-family: var(--display);
+        font-size: 1.6rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+      .fact span {
+        font-family: var(--mono);
+        font-size: 0.625rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      /* ---------- section shell ---------- */
+
+      section {
+        display: flex;
+        flex-direction: column;
+        gap: 1.15rem;
+      }
+      .sec-head {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        border-top: 1px solid var(--line-2);
+        padding-top: 0.9rem;
+      }
+
+      /* ---------- legend ---------- */
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 1.1rem;
+        align-items: center;
+      }
+      .legend .key {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        color: var(--muted);
+      }
+      .legend .key .swatch {
+        width: 8px;
+        height: 8px;
+        flex: none;
+      }
+      .legend .key.c .swatch {
+        background: var(--client);
+      }
+      .legend .key.s .swatch {
+        background: var(--pkg);
+      }
+      .legend .key.u .swatch {
+        background: var(--store);
+      }
+      .legend .key.r .swatch {
+        background: var(--app);
+      }
+
+      /* ---------- component tree ---------- */
+
+      .tree {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 1rem 1.1rem;
+        overflow-x: auto;
+      }
+      .tree ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .tree > ul > li {
+        padding-left: 0;
+      }
+      .tree > ul > li::before,
+      .tree > ul > li::after {
+        display: none;
+      }
+      .tree li {
+        position: relative;
+        padding-left: 1.15rem;
+      }
+      .tree li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        border-left: 1px solid var(--line-2);
+      }
+      .tree li:last-child::before {
+        bottom: auto;
+        height: 0.95em;
+      }
+      .tree li::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.95em;
+        width: 0.72rem;
+        border-top: 1px solid var(--line-2);
+      }
+
+      .node {
+        display: flex;
+        align-items: baseline;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        padding: 0.12rem 0;
+      }
+      .node .nm {
+        font-family: var(--mono);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .node .nm.c {
+        color: var(--client);
+      }
+      .node .nm.s {
+        color: var(--pkg);
+      }
+      .node .nm.u {
+        color: var(--store);
+      }
+      .node .nm.r {
+        color: var(--app);
+      }
+      .node .meta {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .node .meta code {
+        font-size: 0.9em;
+      }
+      .node .flag {
+        font-family: var(--mono);
+        font-size: 0.625rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border: 1px solid var(--line);
+        background: var(--surface-2);
+        color: var(--muted);
+        padding: 0 0.3rem;
+        border-radius: 2px;
+        white-space: nowrap;
+      }
+      .node .flag.ctx {
+        border-color: var(--client);
+        color: var(--client);
+        background: transparent;
+      }
+      .node .flag.act {
+        border-color: var(--app);
+        color: var(--app);
+        background: transparent;
+      }
+      .node .flag.dead {
+        border-color: var(--warn);
+        color: var(--warn);
+        background: transparent;
+      }
+
+      /* ---------- boundary crossing ---------- */
+
+      .cross {
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+      }
+      .cross .step {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 0.8rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        border-top: 2px solid var(--tone, var(--line-2));
+      }
+      .cross .step.down {
+        --tone: var(--pkg);
+      }
+      .cross .step.hold {
+        --tone: var(--client);
+      }
+      .cross .step.up {
+        --tone: var(--app);
+      }
+      .cross .step .eyebrow {
+        color: var(--tone);
+      }
+      .cross .step p {
+        font-size: 0.8125rem;
+        color: var(--ink-2);
+        max-width: none;
+      }
+
+      /* ---------- tables ---------- */
+
+      .scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.875rem;
+        min-width: 34rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.55rem 0.8rem;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      thead th {
+        font-family: var(--mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 400;
+        background: var(--surface-2);
+        white-space: nowrap;
+      }
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      td.mono,
+      td .mono {
+        color: var(--ink-2);
+      }
+      td.num {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        white-space: nowrap;
+      }
+      td b {
+        font-weight: 600;
+      }
+      td .c {
+        color: var(--client);
+      }
+      td .s {
+        color: var(--pkg);
+      }
+      td .u {
+        color: var(--store);
+      }
+
+      /* ---------- notes ---------- */
+
+      .notes {
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+      }
+      .note-card {
+        border: 1px solid var(--line);
+        border-top: 2px solid var(--warn);
+        background: var(--surface);
+        padding: 0.8rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .note-card.ok {
+        border-top-color: var(--pkg);
+      }
+      .note-card p {
+        font-size: 0.875rem;
+        color: var(--ink-2);
+        max-width: none;
+      }
+      .note-card .eyebrow {
+        color: var(--muted);
+      }
+
+      footer.foot {
+        border-top: 1px solid var(--line-2);
+        padding-top: 0.9rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      footer.foot p {
+        max-width: none;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        a {
+          transition: text-decoration-color 120ms ease;
+        }
+        a:hover {
+          text-decoration-color: currentColor;
+        }
+      }
+
+      @media print {
+        .theme-toggle {
+          display: none;
+        }
+        body {
+          background: #fff;
+          color: #000;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <div class="rule-top">
+          <span class="eyebrow">GlowRoot · component architecture</span>
+          <span class="sibling"
+            >companion to architecture.html (runtime view)</span
+          >
+          <button
+            class="theme-toggle"
+            type="button"
+            id="themeToggle"
+            aria-live="polite"
+          >
+            Dark
+          </button>
+        </div>
+        <h1>
+          Thirty-six components, two context providers,<br />and one boundary
+          that matters.
+        </h1>
+        <p class="lede">
+          Composition here is <strong>page-driven</strong>: route pages are the
+          only real composers, and everything below them is a leaf or a
+          near-leaf. Interactivity is pushed as far down the tree as it will go
+          — a server-rendered section will render a single client button rather
+          than becoming a client component itself. That one habit explains
+          almost every shape on this page.
+        </p>
+
+        <div class="facts">
+          <div class="fact"><b>36</b><span>components</span></div>
+          <div class="fact"><b>22</b><span>client islands</span></div>
+          <div class="fact"><b>14</b><span>server-only</span></div>
+          <div class="fact"><b>6</b><span>ui primitives</span></div>
+          <div class="fact"><b>2</b><span>providers</span></div>
+          <div class="fact"><b>15</b><span>context consumers</span></div>
+          <div class="fact"><b>8</b><span>levels deep</span></div>
+        </div>
+
+        <div class="legend" role="list">
+          <span class="key c" role="listitem"
+            ><span class="swatch"></span>client · "use client"</span
+          >
+          <span class="key s" role="listitem"
+            ><span class="swatch"></span>server component</span
+          >
+          <span class="key u" role="listitem"
+            ><span class="swatch"></span>@glowroot/ui primitive</span
+          >
+          <span class="key r" role="listitem"
+            ><span class="swatch"></span>route entry / server action</span
+          >
+        </div>
+      </header>
+
+      <!-- ============ FIG 1 · THE SHELL ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 1</span>
+          <h2>The shell every page mounts into</h2>
+          <p>
+            Defined once in <code>app/layout.tsx</code>. The two providers wrap
+            everything, so any island anywhere in the tree can reach cart and
+            session state without props being threaded through.
+          </p>
+        </div>
+
+        <div class="tree">
+          <ul>
+            <li>
+              <div class="node">
+                <span class="nm r">RootLayout</span>
+                <span class="meta"
+                  ><code>app/layout.tsx</code> · metadata, fonts,
+                  globals.css</span
+                >
+              </div>
+              <ul>
+                <li>
+                  <div class="node">
+                    <span class="nm c">AuthProvider</span>
+                    <span class="flag ctx">context</span>
+                    <span class="meta"
+                      >the signed-in customer ·
+                      <code>glowroot.session</code></span
+                    >
+                  </div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm c">StoreProvider</span>
+                        <span class="flag ctx">context</span>
+                        <span class="meta"
+                          >cart, pincode, cart-ping, fly-to-cart ·
+                          <code>glowroot.cart</code>,
+                          <code>glowroot.pincode</code></span
+                        >
+                      </div>
+                      <ul>
+                        <li>
+                          <div class="node">
+                            <span class="nm c">SiteHeader</span>
+                            <span class="meta"
+                              >mega-menu + mobile drawer · 354 lines, the
+                              largest island after checkout</span
+                            >
+                          </div>
+                          <ul>
+                            <li>
+                              <div class="node">
+                                <span class="nm c">PincodeControl</span
+                                ><span class="meta"
+                                  >non-blocking serviceability input</span
+                                >
+                              </div>
+                            </li>
+                            <li>
+                              <div class="node">
+                                <span class="nm c">CartButton</span
+                                ><span class="meta"
+                                  >count badge from context</span
+                                >
+                              </div>
+                            </li>
+                            <li>
+                              <div class="node">
+                                <span class="nm u">ChevronDown</span>
+                              </div>
+                            </li>
+                          </ul>
+                        </li>
+                        <li>
+                          <div class="node">
+                            <span class="nm c">SoftServiceBanner</span>
+                            <span class="meta"
+                              >soft hint when the pincode is out of area — never
+                              blocks browsing</span
+                            >
+                          </div>
+                        </li>
+                        <li>
+                          <div class="node">
+                            <span class="nm r">&lt;main&gt; { children }</span>
+                            <span class="meta"
+                              >the matched route — see figures 2 and 5</span
+                            >
+                          </div>
+                        </li>
+                        <li>
+                          <div class="node">
+                            <span class="nm s">SiteFooter</span
+                            ><span class="meta">static, no client JS</span>
+                          </div>
+                        </li>
+                        <li>
+                          <div class="node">
+                            <span class="nm c">CartIsland</span>
+                            <span class="meta"
+                              >floating cart bar, bottom-right · the fly-to-cart
+                              landing target</span
+                            >
+                          </div>
+                        </li>
+                        <li>
+                          <div class="node">
+                            <span class="nm c">CartDrawer</span>
+                            <span class="flag dead">never rendered</span>
+                            <span class="meta"
+                              >superseded by CartIsland; 136 lines still
+                              compiling</span
+                            >
+                          </div>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ FIG 2 · HOME PAGE ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 2</span>
+          <h2>The deepest composition: the home page</h2>
+          <p>
+            Nine sections, composed flat by <code>app/page.tsx</code>. Note how
+            the interactive leaf sits at the bottom of otherwise fully
+            server-rendered branches — <code>AddToCartButton</code> is the
+            island, not the section holding it.
+          </p>
+        </div>
+
+        <div class="tree">
+          <ul>
+            <li>
+              <div class="node">
+                <span class="nm r">HomePage</span>
+                <span class="meta"
+                  ><code>app/page.tsx</code> · awaits 5 accessors, then
+                  composes</span
+                >
+              </div>
+              <ul>
+                <li>
+                  <div class="node">
+                    <span class="nm s">Hero</span
+                    ><span class="meta">floating badges</span>
+                  </div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm u">Button · Eyebrow · ArrowRight</span>
+                      </div>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="node">
+                    <span class="nm s">SeasonalSection</span
+                    ><span class="meta">fruit / veg / blend rings</span>
+                  </div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm s">SectionHead</span>
+                      </div>
+                    </li>
+                    <li>
+                      <div class="node">
+                        <span class="nm c">ProduceCard</span
+                        ><span class="meta"
+                          >reads context to add straight from a ring</span
+                        >
+                      </div>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="node">
+                    <span class="nm s">ProcessSteps</span
+                    ><span class="meta">how it's made</span>
+                  </div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm s">SectionHead</span>
+                      </div>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="node"><span class="nm s">MenuSection</span></div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm c">ProductCarousel</span
+                        ><span class="meta">scroll + arrow state</span>
+                      </div>
+                      <ul>
+                        <li>
+                          <div class="node">
+                            <span class="nm u">ProductCard</span
+                            ><span class="meta"
+                              >shared with /products and ComboMenu</span
+                            >
+                          </div>
+                        </li>
+                        <li>
+                          <div class="node">
+                            <span class="nm c">AddToCartButton</span
+                            ><span class="meta"
+                              >5 render sites — the most reused leaf</span
+                            >
+                          </div>
+                          <ul>
+                            <li>
+                              <div class="node">
+                                <span class="nm u">Button · ArrowRight</span>
+                              </div>
+                            </li>
+                          </ul>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="node">
+                    <span class="nm s">FeatureCard</span
+                    ><span class="meta">new arrival (smoothie)</span>
+                  </div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm s">SectionHead</span>
+                      </div>
+                    </li>
+                    <li>
+                      <div class="node">
+                        <span class="nm c">AddToCartButton</span>
+                      </div>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="node">
+                    <span class="nm s">CombosSection</span
+                    ><span class="meta">also the whole of /combos</span>
+                  </div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm s">SectionHead</span>
+                      </div>
+                    </li>
+                    <li>
+                      <div class="node">
+                        <span class="nm s">BundleCard</span
+                        ><span class="meta">Sampler / Sharing / Gift</span>
+                      </div>
+                    </li>
+                    <li>
+                      <div class="node">
+                        <span class="nm c">AddToCartButton</span>
+                      </div>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="node"><span class="nm s">BenefitsBand</span></div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm u">StatsBand</span
+                        ><span class="meta">its only consumer</span>
+                      </div>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="node">
+                    <span class="nm c">PlanGrid</span
+                    ><span class="meta"
+                      >weekly / monthly toggle · shared with /subscribe</span
+                    >
+                  </div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm u">Button · Eyebrow · Check</span>
+                      </div>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="node"><span class="nm s">FinalCta</span></div>
+                  <ul>
+                    <li>
+                      <div class="node">
+                        <span class="nm u">Button · Eyebrow · ArrowRight</span>
+                      </div>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ FIG 3 · THE BOUNDARY ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 3</span>
+          <h2>How data and events cross the boundary</h2>
+          <p>
+            Three moves, and no fourth. There is no client-side fetching
+            anywhere in the storefront — every island gets its data as props or
+            calls a server action.
+          </p>
+        </div>
+
+        <div class="cross">
+          <div class="step down">
+            <span class="eyebrow">Downward · props</span>
+            <h3>Server page fetches, then hands over</h3>
+            <p>
+              A route page awaits <code>@glowroot/data</code> accessors and
+              passes plain serializable objects down — <code>Product[]</code>,
+              <code>Plan[]</code>, <code>deliverySlots</code>. The island never
+              learns where they came from.
+            </p>
+          </div>
+          <div class="step hold">
+            <span class="eyebrow">Sideways · context</span>
+            <h3>Cross-cutting state comes from context</h3>
+            <p>
+              Cart, pincode and session skip the prop chain entirely: 15
+              components call <code>useStore()</code> or
+              <code>useAuth()</code> directly. That's why
+              <code>SiteHeader</code> can show a live cart count without the
+              page knowing a cart exists.
+            </p>
+          </div>
+          <div class="step up">
+            <span class="eyebrow">Upward · server actions</span>
+            <h3>Islands call back into the server</h3>
+            <p>
+              <code>CheckoutClient</code> → <code>placeOrder</code>.
+              <code>AuthForm</code> → <code>signIn</code> / <code>signUp</code>.
+              <code>AccountOrders</code> and <code>TrackOrderForm</code> →
+              <code>fetchMyOrders</code> / <code>trackOrder</code>. Six of the
+              seven actions are invoked from exactly one component.
+            </p>
+          </div>
+        </div>
+
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Server action</th>
+                <th>Called by</th>
+                <th>Defined in</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">placeOrder</td>
+                <td><span class="c mono">CheckoutClient</span></td>
+                <td class="mono">app/checkout/actions.ts</td>
+              </tr>
+              <tr>
+                <td class="mono">signIn · signUp</td>
+                <td><span class="c mono">AuthForm</span></td>
+                <td class="mono">app/login/actions.ts</td>
+              </tr>
+              <tr>
+                <td class="mono">fetchMyOrders</td>
+                <td><span class="c mono">AccountOrders</span></td>
+                <td class="mono">app/account/actions.ts</td>
+              </tr>
+              <tr>
+                <td class="mono">fetchMyOrder</td>
+                <td><span class="c mono">AccountOrderDetail</span></td>
+                <td class="mono">app/account/actions.ts</td>
+              </tr>
+              <tr>
+                <td class="mono">trackOrder</td>
+                <td><span class="c mono">TrackOrderForm</span></td>
+                <td class="mono">app/account/actions.ts</td>
+              </tr>
+              <tr>
+                <td class="mono">changeStatus</td>
+                <td>
+                  <span class="c mono">StatusChanger</span>
+                  <span style="color: var(--muted)">(admin)</span>
+                </td>
+                <td class="mono">app/orders/actions.ts</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ FIG 4 · PRIMITIVES ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 4</span>
+          <h2>The shared primitive layer</h2>
+          <p>
+            <code>@glowroot/ui</code> — six components and five icons, imported
+            by both apps. Reuse is concentrated: two primitives account for most
+            of it, and the tail is nearly flat.
+          </p>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Primitive</th>
+                <th class="num">Import sites</th>
+                <th>Who uses it</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Button</b></td>
+                <td class="num">15</td>
+                <td>Every form and CTA in both apps</td>
+              </tr>
+              <tr>
+                <td><b>Eyebrow</b></td>
+                <td class="num">14</td>
+                <td>Section labels across 6 pages and 8 components</td>
+              </tr>
+              <tr>
+                <td><b>ArrowRight</b></td>
+                <td class="num">9</td>
+                <td>Paired with Button on forward actions</td>
+              </tr>
+              <tr>
+                <td><b>Badge</b></td>
+                <td class="num">3</td>
+                <td>products/[slug], subscribe/[slug], admin /products</td>
+              </tr>
+              <tr>
+                <td><b>ProductCard</b></td>
+                <td class="num">3</td>
+                <td>/products, ProductCarousel, ComboMenu</td>
+              </tr>
+              <tr>
+                <td><b>ChevronRight</b></td>
+                <td class="num">3</td>
+                <td>ProductCarousel, ComboMenu, CartIsland</td>
+              </tr>
+              <tr>
+                <td><b>ChevronLeft</b></td>
+                <td class="num">1</td>
+                <td>ProductCarousel</td>
+              </tr>
+              <tr>
+                <td><b>ChevronDown</b></td>
+                <td class="num">1</td>
+                <td>SiteHeader</td>
+              </tr>
+              <tr>
+                <td><b>Check</b></td>
+                <td class="num">1</td>
+                <td>PlanGrid</td>
+              </tr>
+              <tr>
+                <td><b>StatsBand</b></td>
+                <td class="num">1</td>
+                <td>BenefitsBand</td>
+              </tr>
+              <tr>
+                <td><b>Card</b></td>
+                <td class="num">0</td>
+                <td>
+                  <span style="color: var(--warn)"
+                    >Exported, imported by nobody</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td><b>cn</b></td>
+                <td class="num">0</td>
+                <td>Used only inside the package (5 of its own components)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ FIG 5 · ROUTE MAP ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 5</span>
+          <h2>Route → entry component</h2>
+          <p>
+            What each page actually composes. Eleven of the twenty routes hand
+            off to a single component and do nothing else themselves.
+          </p>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Route</th>
+                <th>Entry component</th>
+                <th>Below it</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">/</td>
+                <td><span class="s mono">9 sections</span></td>
+                <td>See figure 2</td>
+              </tr>
+              <tr>
+                <td class="mono">/products</td>
+                <td><span class="s mono">SectionHead</span></td>
+                <td>
+                  <span class="u mono">ProductCard</span> +
+                  <span class="c mono">AddToCartButton</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="mono">/products/[slug]</td>
+                <td><span class="c mono">AddToCartButton</span></td>
+                <td>
+                  <span class="u mono">Badge · Eyebrow</span>; resolves the
+                  material recipe inline
+                </td>
+              </tr>
+              <tr>
+                <td class="mono">/combos</td>
+                <td><span class="s mono">CombosSection</span></td>
+                <td>Same subtree as the home page's combos band</td>
+              </tr>
+              <tr>
+                <td class="mono">/combos/[slug]</td>
+                <td><span style="color: var(--muted)">— inline —</span></td>
+                <td>No component of its own</td>
+              </tr>
+              <tr>
+                <td class="mono">/combos/menu</td>
+                <td><span class="c mono">ComboMenu</span></td>
+                <td>345 lines; owns the box-picking flow</td>
+              </tr>
+              <tr>
+                <td class="mono">/seasonal</td>
+                <td><span class="s mono">SeasonalSection</span></td>
+                <td>
+                  <span class="c mono">ProduceCard</span> ·
+                  <span class="s mono">SectionHead</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="mono">/subscribe</td>
+                <td><span class="c mono">PlanGrid</span></td>
+                <td>Weekly/monthly toggle</td>
+              </tr>
+              <tr>
+                <td class="mono">/subscribe/[slug]</td>
+                <td><span class="c mono">PlanConfigForm</span></td>
+                <td><span class="u mono">Button · ArrowRight</span></td>
+              </tr>
+              <tr>
+                <td class="mono">/checkout</td>
+                <td><span class="c mono">CheckoutClient</span></td>
+                <td>507 lines — form, validation, payment UI, action call</td>
+              </tr>
+              <tr>
+                <td class="mono">/checkout/success</td>
+                <td><span style="color: var(--muted)">— inline —</span></td>
+                <td><span class="u mono">Button · Eyebrow</span></td>
+              </tr>
+              <tr>
+                <td class="mono">/login</td>
+                <td><span class="c mono">AuthForm</span></td>
+                <td>Sign-in and sign-up in one component</td>
+              </tr>
+              <tr>
+                <td class="mono">/account/orders</td>
+                <td><span class="c mono">AccountOrders</span></td>
+                <td>Reads the email off <span class="mono">useAuth()</span></td>
+              </tr>
+              <tr>
+                <td class="mono">/account/orders/[id]</td>
+                <td><span class="c mono">AccountOrderDetail</span></td>
+                <td>
+                  <span class="s mono">OrderDetailCard</span> →
+                  <span class="s mono">OrderTimeline</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="mono">/track</td>
+                <td><span class="c mono">TrackOrderForm</span></td>
+                <td>
+                  Same <span class="s mono">OrderDetailCard</span> subtree,
+                  reached without a session
+                </td>
+              </tr>
+              <tr>
+                <td class="mono" style="border-top: 2px solid var(--line-2)">
+                  admin /
+                </td>
+                <td style="border-top: 2px solid var(--line-2)">
+                  <span class="s mono">StatusBadge</span>
+                </td>
+                <td style="border-top: 2px solid var(--line-2)">
+                  KPI tiles rendered inline
+                </td>
+              </tr>
+              <tr>
+                <td class="mono">admin /orders</td>
+                <td><span class="s mono">StatusBadge</span></td>
+                <td>Table rendered inline</td>
+              </tr>
+              <tr>
+                <td class="mono">admin /orders/[id]</td>
+                <td><span class="c mono">StatusChanger</span></td>
+                <td>
+                  + <span class="s mono">StatusBadge</span>; the only admin
+                  mutation
+                </td>
+              </tr>
+              <tr>
+                <td class="mono">admin /products</td>
+                <td><span class="u mono">Badge</span></td>
+                <td>No local component</td>
+              </tr>
+              <tr>
+                <td class="mono">admin /materials</td>
+                <td><span style="color: var(--muted)">— inline —</span></td>
+                <td>Low-stock highlighting inline</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ FIG 6 · WHAT THE TREE SHOWS ============ -->
+      <section>
+        <div class="sec-head">
+          <span class="eyebrow">Figure 6</span>
+          <h2>What the tree shows</h2>
+          <p>
+            Six things that fall out of the composition graph rather than the
+            runtime shape.
+          </p>
+        </div>
+        <div class="notes">
+          <div class="note-card">
+            <span class="eyebrow">Dead code</span>
+            <h3>CartDrawer is never rendered</h3>
+            <p>
+              136 lines, imports <code>useStore</code> and <code>Button</code>,
+              and no file in either app references it —
+              <code>CartIsland</code> took over the job. It still type-checks
+              and still ships in the graph, so it reads as live when it isn't.
+            </p>
+          </div>
+          <div class="note-card">
+            <span class="eyebrow">Boundary is wider than it looks</span>
+            <h3>Two components are client-side without saying so</h3>
+            <p>
+              <code>OrderDetailCard</code> and <code>OrderTimeline</code> carry
+              no <code>"use client"</code>, but their only parents are
+              <code>AccountOrderDetail</code> and <code>TrackOrderForm</code> —
+              both clients. React pulls them into the client bundle regardless,
+              so the directive count of 22 understates the real boundary by two.
+            </p>
+          </div>
+          <div class="note-card">
+            <span class="eyebrow">Concentration</span>
+            <h3>CheckoutClient is the outlier</h3>
+            <p>
+              507 lines — 43% larger than the next component, and it holds the
+              address form, field validation, delivery-slot choice, payment
+              method UI, the error states and the <code>placeOrder</code> call.
+              It's the one component where a split would pay for itself.
+            </p>
+          </div>
+          <div class="note-card ok">
+            <span class="eyebrow">Holding up well</span>
+            <h3>Islands are pushed to the leaves</h3>
+            <p>
+              Six of the nine home-page sections are server components that
+              render one small client child. The pattern is consistent enough to
+              be a rule: a section becomes an island only when the whole section
+              is interactive (<code>PlanGrid</code>,
+              <code>ProductCarousel</code>).
+            </p>
+          </div>
+          <div class="note-card ok">
+            <span class="eyebrow">Holding up well</span>
+            <h3>Two entry points, one subtree</h3>
+            <p>
+              <code>/account/orders/[id]</code> and <code>/track</code> reach
+              the same <code>OrderDetailCard</code> →
+              <code>OrderTimeline</code> pair through different doors — one with
+              a session, one with an order ID plus email. The display logic
+              wasn't duplicated for the guest path.
+            </p>
+          </div>
+          <div class="note-card ok">
+            <span class="eyebrow">Holding up well</span>
+            <h3>Flat, not deep</h3>
+            <p>
+              The longest chain is eight nodes and most branches are three. No
+              component imports another through the <code>@/</code> alias —
+              siblings use relative paths, which keeps the graph legible and
+              makes accidental cycles obvious.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <p>
+          Derived from the import graph of
+          <span class="mono">apps/storefront/{app,components}</span>,
+          <span class="mono">apps/admin/{app,components}</span> and
+          <span class="mono">packages/ui/src</span>. Client counts are files
+          carrying <span class="mono">"use client"</span>; import-site counts
+          are literal
+          <span class="mono">import { … } from "@glowroot/ui"</span>
+          occurrences. For the runtime view — processes, ports, persistence and
+          the order path — see <span class="mono">docs/architecture.html</span>.
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var button = document.getElementById("themeToggle");
+        var KEY = "glowroot.docs.theme";
+
+        function systemPrefersDark() {
+          return (
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches
+          );
+        }
+
+        function isDark() {
+          var explicit = root.getAttribute("data-theme");
+          if (explicit) return explicit === "dark";
+          return systemPrefersDark();
+        }
+
+        function paint() {
+          // The button offers the theme you'd switch *to*.
+          button.textContent = isDark() ? "Light" : "Dark";
+        }
+
+        try {
+          var saved = window.localStorage.getItem(KEY);
+          if (saved === "dark" || saved === "light")
+            root.setAttribute("data-theme", saved);
+        } catch (e) {
+          /* private mode — fall back to the OS preference */
+        }
+
+        paint();
+
+        button.addEventListener("click", function () {
+          var next = isDark() ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try {
+            window.localStorage.setItem(KEY, next);
+          } catch (e) {
+            /* ignore */
+          }
+          paint();
+        });
+
+        if (window.matchMedia) {
+          window
+            .matchMedia("(prefers-color-scheme: dark)")
+            .addEventListener("change", function () {
+              if (!root.getAttribute("data-theme")) paint();
+            });
+        }
+      })();
+    </script>
+  </body>
+</html>

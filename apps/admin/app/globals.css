@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-body bg-cream text-ink antialiased;
+    line-height: 1.55;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-bold text-ink;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Google Places' new widget owns its internal accessible input. The host can
+   still be styled so it sits naturally alongside the admin form controls. */
+gmp-place-autocomplete.location-autocomplete {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  color-scheme: light;
+  --gmpx-color-surface: #fffdf7;
+  --gmpx-color-on-surface: #243322;
+  --gmpx-color-primary: #5a8a4a;
+  --gmpx-font-family-base: var(
+    --font-body,
+    ui-sans-serif,
+    system-ui,
+    sans-serif
+  );
+}
+
+/* Keep the navigation mounted so quick toggles reverse the current animation.
+   The fixed desktop inner width prevents labels reflowing during collapse. */
+.admin-sidebar {
+  display: grid;
+  grid-template-rows: 0fr;
+  flex-shrink: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 240ms cubic-bezier(0.2, 0, 0, 1),
+    visibility 0s 240ms;
+}
+.admin-sidebar[data-open="true"] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.admin-sidebar-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.admin-sidebar-content {
+  display: flex;
+  flex-direction: column;
+  border-bottom-width: 1px;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity 180ms ease,
+    transform 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+.admin-sidebar[data-open="true"] .admin-sidebar-content {
+  opacity: 1;
+  transform: none;
+}
+.admin-menu-icon {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+.admin-menu-icon span {
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 20px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.admin-menu-icon span:first-child {
+  transform: translateY(-6px);
+}
+.admin-menu-icon span:last-child {
+  transform: translateY(6px);
+}
+@media (min-width: 768px) {
+  .admin-sidebar {
+    position: sticky;
+    top: 4rem;
+    align-self: flex-start;
+    height: calc(100dvh - 4rem);
+    width: 240px;
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition:
+      width 240ms cubic-bezier(0.2, 0, 0, 1),
+      visibility 0s;
+  }
+  .admin-sidebar[data-open="false"] {
+    width: 0;
+    visibility: hidden;
+    transition-delay: 0s, 240ms;
+  }
+  .admin-sidebar-content {
+    width: 240px;
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-bottom-width: 0;
+    border-right-width: 1px;
+    opacity: 1;
+    transform: none;
+  }
+  .admin-sidebar[data-open="false"] .admin-sidebar-content {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar,
+  .admin-sidebar-content {
+    transition: none;
+  }
+}

@@ -1,0 +1,285 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AdminUserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DISABLED
+
+  @@map("admin_user_status")
+}
+
+model AdminUser {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String          @unique @db.Citext
+  name              String          @db.VarChar(120)
+  phone             String?         @db.VarChar(30)
+  status            AdminUserStatus @default(INVITED)
+  passwordHash      String?         @map("password_hash") @db.Text
+  emailVerifiedAt   DateTime?       @map("email_verified_at") @db.Timestamptz(6)
+  passwordChangedAt DateTime?       @map("password_changed_at") @db.Timestamptz(6)
+  lastLoginAt       DateTime?       @map("last_login_at") @db.Timestamptz(6)
+  failedLoginCount  Int             @default(0) @map("failed_login_count")
+  lockedUntil       DateTime?       @map("locked_until") @db.Timestamptz(6)
+  mfaEnrolledAt     DateTime?       @map("mfa_enrolled_at") @db.Timestamptz(6)
+  createdById       String?         @map("created_by_id") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdBy        AdminUser?             @relation("AdminUserCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers     AdminUser[]            @relation("AdminUserCreator")
+  roles            AdminUserRole[]
+  sessions         AdminSession[]
+  resetTokens      AdminPasswordReset[]
+  invitationsSent  AdminInvitation[]      @relation("AdminInvitationCreator")
+  auditEntries     AdminAuditLog[]        @relation("AdminAuditActor")
+  mfaCredential    AdminMfaCredential?
+  mfaRecoveryCodes AdminMfaRecoveryCode[]
+
+  @@index([status])
+  @@map("admin_users")
+}
+
+model AdminRole {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key          String   @unique @db.VarChar(60)
+  name         String   @db.VarChar(100)
+  description  String?  @db.Text
+  isSystemRole Boolean  @default(false) @map("is_system_role")
+  requiresMfa  Boolean  @default(false) @map("requires_mfa")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users       AdminUserRole[]
+  permissions AdminRolePermission[]
+  invitations AdminInvitationRole[]
+
+  @@map("admin_roles")
+}
+
+model AdminPermission {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  module      String   @db.VarChar(60)
+  action      String   @db.VarChar(60)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  roles AdminRolePermission[]
+
+  @@unique([module, action])
+  @@map("admin_permissions")
+}
+
+model AdminUserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedBy String?  @map("assigned_by") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role AdminRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("admin_user_roles")
+}
+
+model AdminRolePermission {
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  grantedAt    DateTime @default(now()) @map("granted_at") @db.Timestamptz(6)
+
+  role       AdminRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission AdminPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("admin_role_permissions")
+}
+
+model AdminInvitation {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email       String    @db.Citext
+  name        String    @db.VarChar(120)
+  tokenHash   String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz(6)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
+  invitedById String    @map("invited_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  invitedBy AdminUser             @relation("AdminInvitationCreator", fields: [invitedById], references: [id], onDelete: Restrict)
+  roles     AdminInvitationRole[]
+
+  @@index([email])
+  @@index([expiresAt])
+  @@map("admin_invitations")
+}
+
+model AdminInvitationRole {
+  invitationId String @map("invitation_id") @db.Uuid
+  roleId       String @map("role_id") @db.Uuid
+
+  invitation AdminInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  role       AdminRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([invitationId, roleId])
+  @@index([roleId])
+  @@map("admin_invitation_roles")
+}
+
+model AdminSession {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  ipAddress  String?   @map("ip_address") @db.Inet
+  userAgent  String?   @map("user_agent") @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("admin_sessions")
+}
+
+model AdminPasswordReset {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("admin_password_resets")
+}
+
+model AdminAuditLog {
+  id          BigInt   @id @default(autoincrement())
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  action      String   @db.VarChar(120)
+  targetType  String?  @map("target_type") @db.VarChar(80)
+  targetId    String?  @map("target_id") @db.VarChar(120)
+  beforeData  Json?    @map("before_data") @db.JsonB
+  afterData   Json?    @map("after_data") @db.JsonB
+  ipAddress   String?  @map("ip_address") @db.Inet
+  userAgent   String?  @map("user_agent") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor AdminUser? @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId])
+  @@index([action, createdAt])
+  @@map("admin_audit_logs")
+}
+
+enum AdminMfaMethod {
+  TOTP
+
+  @@map("admin_mfa_method")
+}
+
+/// One confirmed second factor per staff account. The TOTP secret is stored
+/// encrypted at rest — the application holds the key, never the database.
+model AdminMfaCredential {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String         @unique @map("user_id") @db.Uuid
+  method           AdminMfaMethod @default(TOTP)
+  secretCiphertext String         @map("secret_ciphertext") @db.Text
+  confirmedAt      DateTime?      @map("confirmed_at") @db.Timestamptz(6)
+  lastUsedAt       DateTime?      @map("last_used_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_mfa_credentials")
+}
+
+/// Single-use fallbacks issued at enrolment. Only the hash is persisted, so a
+/// leaked table cannot be replayed as a login.
+model AdminMfaRecoveryCode {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @map("code_hash") @db.VarChar(64)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+  @@index([userId, usedAt])
+  @@map("admin_mfa_recovery_codes")
+}
+
+
+model Customer {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique @db.Citext
+  name         String   @db.Text
+  phone        String?  @db.Text
+  address      String?  @db.Text
+  pincode      String?  @db.Text
+  passwordHash String   @default("") @map("password_hash") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  orders       CustomerOrder[]
+  sessions     CustomerSession[]
+
+  @@map("customers")
+}
+
+model CustomerOrder {
+  id              String   @id @db.Citext
+  customerId      String   @map("customer_id") @db.Uuid
+  // Immutable checkout contact snapshot; later profile edits must not rewrite it.
+  customerName    String   @map("customer_name") @db.Text
+  customerEmail   String   @map("customer_email") @db.Citext
+  customerPhone   String?  @map("customer_phone") @db.Text
+  customerAddress String   @map("customer_address") @db.Text
+  items           Json     @db.JsonB
+  type            String   @db.Text
+  planSlug        String?  @map("plan_slug") @db.Text
+  status          String   @db.Text
+  totalINR        Int      @map("total_inr")
+  createdAt       DateTime @map("created_at") @db.Timestamptz(6)
+  // Preserve the original ISO value used by rescheduling's compare-and-set.
+  deliveryDate    String   @map("delivery_date") @db.Text
+  deliverySlot    String?  @map("delivery_slot") @db.Text
+  deliveryPincode String?  @map("delivery_pincode") @db.Text
+  partnerId       String?  @map("partner_id") @db.Text
+  payment         Json?    @db.JsonB
+  history         Json?    @db.JsonB
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@index([status, deliveryDate])
+  @@map("customer_orders")
+}
+
+model CustomerSession {
+  tokenHash  String   @id @map("token_hash") @db.VarChar(64)
+  customerId String   @map("customer_id") @db.Uuid
+  role       String   @default("customer") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  userAgent  String?  @map("user_agent") @db.Text
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([expiresAt])
+  @@map("customer_sessions")
+}
